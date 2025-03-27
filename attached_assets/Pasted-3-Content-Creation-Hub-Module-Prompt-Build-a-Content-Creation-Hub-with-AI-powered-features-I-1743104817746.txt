@@ -1,0 +1,106 @@
+3. Content Creation Hub Module
+Prompt :
+
+"Build a Content Creation Hub with AI-powered features: 
+
+Idea Generator : Use OpenAI’s GPT-4 API to suggest niche-specific ideas.
+Template Library : Store pre-built templates for TikTok formats (e.g., 'Before/After', 'How-To').
+Video Editor : Integrate FFmpeg for trimming, format conversion (9:16 → 1:1), and CapCut API for advanced effects.
+Add a drag-and-drop interface for organizing drafts and scripts. Use AWS S3 for media storage."
+Expected Output :
+
+OpenAI API integration for idea generation.
+FFmpeg scripts for video processing.
+React components for drag-and-drop editing and template selection.
+AWS S3 integration for media uploads.
+4. Cross-Platform Scheduler Module
+Prompt :
+
+"Create a Cross-Platform Scheduler that auto-posts to TikTok, Instagram Reels, and YouTube Shorts. Use Instagram Graph API and YouTube Data API. Add auto-formatting for aspect ratios and best-time suggestions based on historical engagement. Use cron jobs for scheduling and Redis for caching." 
+
+Expected Output :
+
+OAuth2 authentication for Instagram/Youtube.
+Cron job logic with Node.js node-cron.
+Format conversion middleware (e.g., sharp for images).
+React calendar view for scheduling.
+5. Community Manager Module
+Prompt :
+
+"Implement a Community Manager with: 
+
+Sentiment Analysis : Use Hugging Face’s BERT model to categorize comments (positive/negative/neutral).
+Auto-Reply : Train a Rasa chatbot for FAQs and spam.
+UGC Tracking : Highlight top user-generated content and auto-tag users.
+Add a unified comment inbox with keyword filters and sentiment sorting."
+Expected Output :
+
+Hugging Face pipeline for sentiment analysis.
+Rasa NLU model and dialog flow code.
+WebSocket for real-time moderation.
+React moderation dashboard with filtering tools.
+6. Monetization Dashboard Module
+Prompt :
+
+"Build a Monetization Dashboard with: 
+
+Revenue Tracking : Integrate Stripe/PayPal for payments and QuickBooks API for tax reports.
+Brand Collaboration : A marketplace for brand RFPs with contract templates.
+Forecasting : Use Prophet (Facebook’s library) to predict earnings based on historical data.
+Add a unified dashboard for TikTok Rewards, TikTok Shop, and affiliate earnings."
+Expected Output :
+
+Stripe/PayPal payment gateway integration.
+Prophet-based time-series forecasting model.
+Contract management templates with legal safeguards.
+React dashboard with revenue charts.
+7. Audience Growth Tools Module
+Prompt :
+
+"Add Audience Growth Tools that: 
+
+Analyze Demographics : Use TikTok’s Creative Center API to suggest untapped niches.
+Scout Hashtags/Sounds : Identify underutilized trends with TrendTok API.
+Competitor Analysis : Compare follower demographics and engagement with competitors."
+Expected Output :
+
+TrendTok API integration for hashtag/sound data.
+PostgreSQL tables for audience demographics.
+React heatmap visualization for growth opportunities.
+8. AI Agent Module
+Prompt :
+
+"Implement an AI Agent for real-time assistance: 
+
+Chatbot : Use Rasa for FAQs and workflow suggestions.
+Content Ideas : GPT-4-powered prompts for niche-specific content.
+Algorithm Insights : Explain predictions from the ML model.
+Add a sidebar widget for the agent in the frontend."
+Expected Output :
+
+Rasa NLU pipeline and dialog flow code.
+GPT-4 integration for content ideas.
+React chatbot widget with WebSocket support.
+9. Security & Compliance Module
+Prompt :
+
+"Ensure GDPR/CCPA compliance : 
+
+Anonymize user data (hash IDs, anonymize comments).
+Use AWS KMS for encrypting sensitive data (payment details).
+Add OAuth2 for third-party APIs and Redis for API rate limiting."
+Expected Output :
+
+Data anonymization middleware.
+AWS KMS encryption for sensitive fields.
+Redis caching for rate limiting.
+10. Deployment & Scaling
+Prompt :
+
+"Deploy CreatorAIDE to Replit’s cloud with Docker and Kubernetes. Use AWS/Azure for scalable infrastructure. Add monitoring with Prometheus/Grafana and error tracking with Sentry." 
+
+Expected Output :
+
+Dockerfile and Kubernetes YAML files.
+CI/CD pipelines for deployment.
+Monitoring dashboards for performance metrics.
