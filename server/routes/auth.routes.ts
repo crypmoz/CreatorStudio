@@ -73,7 +73,7 @@ router.post('/register', async (req: Request, res: Response, next: NextFunction)
       ? validatedData.role
       : 'user';
     
-    const user = await authService.registerWithEmail(
+    const result = await authService.registerWithEmail(
       validatedData.username,
       validatedData.email,
       validatedData.password,
@@ -81,7 +81,7 @@ router.post('/register', async (req: Request, res: Response, next: NextFunction)
       role
     );
     
-    res.status(201).json(user);
+    res.status(201).json(result);
   } catch (error) {
     if (error instanceof z.ZodError) {
       const validationError = fromZodError(error);

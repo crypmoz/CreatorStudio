@@ -22,18 +22,21 @@ class AuthService {
     password: string,
     displayName: string,
     role: 'user' | 'creator' | 'admin'
-  ): Promise<User> {
+  ): Promise<{ user: Omit<User, 'password'>, token: string }> {
     // Check if user already exists
     const existingUser = await storage.getUserByUsername(username);
     if (existingUser) {
       throw new Error('User with this email or username already exists');
     }
 
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     // Create new user
     const user = await storage.createUser({
       username,
       email,
-      password, // In a real application, hash the password with bcrypt
+      password: hashedPassword,
       displayName,
       role,
       provider: 'email',
@@ -41,7 +44,15 @@ class AuthService {
       updatedAt: new Date(),
     });
 
-    return user;
+    // Generate JWT token
+    const token = this.generateToken(user);
+
+    // Return user (without password) and token
+    const { password: _, ...userWithoutPassword } = user;
+    return {
+      user: userWithoutPassword,
+      token,
+    };
   }
 
   /**
@@ -55,14 +66,22 @@ class AuthService {
   ): Promise<{ user: Omit<User, 'password'>, token: string }> {
     // Find user
     const user = await storage.getUserByUsername(username);
-    if (!user || user.password !== password) { // In a real application, use bcrypt.compare
+    if (!user) {
+      throw new Error('Invalid credentials');
+    }
+    
+    // Compare passwords with bcrypt
+    const passwordValid = await bcrypt.compare(password, user.password);
+    if (!passwordValid) {
       throw new Error('Invalid credentials');
     }
 
     // Check if 2FA is enabled
     if (user.twoFactorEnabled) {
+      // Create a copy without the password
+      const { password: _, ...userWithoutPassword } = user;
       return {
-        user: { ...user, password: undefined as any },
+        user: userWithoutPassword,
         token: 'requires_2fa',
       };
     }
@@ -170,8 +189,9 @@ class AuthService {
       throw new Error('User not found');
     }
 
-    // Verify password
-    if (user.password !== password) { // In a real application, use bcrypt.compare
+    // Verify password with bcrypt
+    const passwordValid = await bcrypt.compare(password, user.password);
+    if (!passwordValid) {
       throw new Error('Invalid password');
     }
 
@@ -197,10 +217,14 @@ class AuthService {
 
     // If user doesn't exist, create a new one
     if (!user) {
+      // Generate a random password and hash it
+      const randomPassword = 'social_login_' + Math.random().toString(36).substring(2);
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+      
       user = await storage.createUser({
         username: email.split('@')[0] + Date.now(), // Generate a unique username
         email,
-        password: 'social_login_' + Math.random().toString(36).substring(2), // Random password
+        password: hashedPassword,
         displayName,
         profileImageUrl: profileImageUrl || undefined,
         provider,
@@ -245,8 +269,9 @@ class AuthService {
       throw new Error('User not found');
     }
 
-    // Verify current password
-    if (user.password !== currentPassword) { // In a real application, use bcrypt.compare
+    // Verify current password with bcrypt
+    const passwordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!passwordValid) {
       throw new Error('Current password is incorrect');
     }
 

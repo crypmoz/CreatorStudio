@@ -385,23 +385,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Simple authentication route for demo purposes
-  app.post('/api/auth/login', async (req, res) => {
-    const { username, password } = req.body;
-    
-    if (!username || !password) {
-      return res.status(400).json({ message: 'Username and password are required' });
-    }
-    
-    const user = await storage.getUserByUsername(username);
-    if (!user || user.password !== password) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-    
-    // Don't return the password in the response
-    const { password: _, ...userWithoutPassword } = user;
-    res.json({ user: userWithoutPassword });
-  });
+  // Advanced authentication routes are now handled by the /api/auth router
 
   const httpServer = createServer(app);
   return httpServer;
