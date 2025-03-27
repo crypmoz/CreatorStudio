@@ -50,7 +50,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Star, StarOff, Copy, PlusCircle, Sparkles, PenLine, Check, Trash2, Clock } from 'lucide-react';
+import { Star, StarOff, Copy, PlusCircle, Sparkles, PenLine, Check, Trash2, Clock, Upload, Video, Image as ImageIcon, FileText as FileIcon, X } from 'lucide-react';
+import { MediaUploader } from '@/components/MediaUploader';
+import { VideoProcessor } from '@/components/VideoProcessor';
 
 // Form schema for idea generation
 const generateIdeasSchema = z.object({
@@ -278,6 +280,15 @@ const ContentCreation = () => {
 
   // State for image prompts
   const [imagePrompts, setImagePrompts] = useState<string[]>([]);
+  
+  // State for media tab
+  const [uploadedMedia, setUploadedMedia] = useState<{
+    url: string;
+    type: string;
+    name: string;
+    size: number;
+  } | null>(null);
+  const [processedMediaUrl, setProcessedMediaUrl] = useState<string | null>(null);
 
   // Generate ideas handler
   const onSubmit = (data: GenerateIdeasFormValues) => {
@@ -350,9 +361,10 @@ const ContentCreation = () => {
       </p>
 
       <Tabs defaultValue="ideas" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 mb-8">
+        <TabsList className="grid w-full grid-cols-4 mb-8">
           <TabsTrigger value="ideas">Ideas</TabsTrigger>
           <TabsTrigger value="drafts">Drafts</TabsTrigger>
+          <TabsTrigger value="media">Media</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
         </TabsList>
 
@@ -630,6 +642,122 @@ const ContentCreation = () => {
           </div>
         </TabsContent>
 
+        <TabsContent value="media">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Media Upload Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Upload className="h-5 w-5 text-blue-500" />
+                  Media Manager
+                </CardTitle>
+                <CardDescription>
+                  Upload and manage your media files for TikTok content
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {uploadedMedia ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {uploadedMedia.type.startsWith('image/') ? (
+                          <ImageIcon className="h-8 w-8 text-blue-500" />
+                        ) : uploadedMedia.type.startsWith('video/') ? (
+                          <Video className="h-8 w-8 text-red-500" />
+                        ) : (
+                          <FileIcon className="h-8 w-8 text-gray-500" />
+                        )}
+                        <div>
+                          <p className="font-medium">{uploadedMedia.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {(uploadedMedia.size / (1024 * 1024)).toFixed(2)} MB
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setUploadedMedia(null)}
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Clear
+                      </Button>
+                    </div>
+                    
+                    {uploadedMedia.type.startsWith('image/') && (
+                      <div className="aspect-video bg-muted/30 rounded-md overflow-hidden flex items-center justify-center">
+                        <img
+                          src={uploadedMedia.url}
+                          alt="Uploaded image"
+                          className="max-w-full max-h-full object-contain"
+                        />
+                      </div>
+                    )}
+                    
+                    {uploadedMedia.type.startsWith('video/') && !processedMediaUrl && (
+                      <div className="aspect-video bg-muted/30 rounded-md overflow-hidden flex items-center justify-center">
+                        <video
+                          src={uploadedMedia.url}
+                          controls
+                          className="max-w-full max-h-full"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center">
+                    <MediaUploader 
+                      onUploadComplete={(file) => {
+                        setUploadedMedia(file);
+                        setProcessedMediaUrl(null);
+                      }}
+                      allowedTypes={['image/*', 'video/*']}
+                      maxSizeMB={100}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Video Processing Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Video className="h-5 w-5 text-red-500" />
+                  Video Editor
+                </CardTitle>
+                <CardDescription>
+                  Edit and optimize your videos for TikTok
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {uploadedMedia && uploadedMedia.type.startsWith('video/') ? (
+                  <VideoProcessor 
+                    videoUrl={processedMediaUrl || uploadedMedia.url}
+                    onProcessingComplete={(url) => setProcessedMediaUrl(url)}
+                  />
+                ) : (
+                  <div className="h-[400px] flex flex-col items-center justify-center text-center p-8">
+                    <Video className="h-16 w-16 text-muted-foreground/30 mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No Video Selected</h3>
+                    <p className="text-muted-foreground mb-6">
+                      Upload a video file using the Media Manager to edit and optimize it for TikTok.
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setActiveTab("media")}
+                      disabled={!!uploadedMedia}
+                    >
+                      Upload Video
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+        
         <TabsContent value="drafts">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Draft List */}
@@ -867,7 +995,6 @@ const ContentCreation = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Template cards will go here */}
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-lg">Before/After Transformation</CardTitle>
@@ -899,6 +1026,78 @@ const ContentCreation = () => {
                     <CardContent>
                       <p className="text-sm text-muted-foreground mb-4">
                         Jump on viral sounds with your own creative twist. Helps boost reach through algorithmic recommendations.
+                      </p>
+                      <Button variant="outline" className="w-full">Use Template</Button>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Unpopular Opinion</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Share a controversial but thoughtful take on a topic in your niche. Generate engagement through discussion and debate.
+                      </p>
+                      <Button variant="outline" className="w-full">Use Template</Button>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Day in the Life</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Document your daily routine as a professional in your field. Great for behind-the-scenes content that builds authenticity.
+                      </p>
+                      <Button variant="outline" className="w-full">Use Template</Button>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Expectation vs. Reality</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Contrast common expectations with the actual reality of a situation. Humorous and relatable format with high engagement.
+                      </p>
+                      <Button variant="outline" className="w-full">Use Template</Button>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Top 5 List</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Curate and count down the best products, tips, or ideas in your niche. Creates anticipation and encourages watching to the end.
+                      </p>
+                      <Button variant="outline" className="w-full">Use Template</Button>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Duet Challenge</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Create content that invites others to duet with you. Great for audience participation and extending your reach organically.
+                      </p>
+                      <Button variant="outline" className="w-full">Use Template</Button>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">POV (Point of View)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Create an immersive scenario where viewers feel like they're experiencing the content firsthand. Excellent for storytelling.
                       </p>
                       <Button variant="outline" className="w-full">Use Template</Button>
                     </CardContent>
