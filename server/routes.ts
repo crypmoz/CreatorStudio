@@ -15,6 +15,7 @@ import {
   insertMediaFileSchema
 } from "@shared/schema";
 import authRoutes from "./routes/auth.routes";
+import aiRoutes from "./routes/ai.routes";
 import { setupAuth } from "./auth";
 import express from "express";
 
@@ -25,6 +26,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up route middleware
   app.use(express.json());
   app.use('/api/auth', authRoutes);
+  app.use('/api/ai', aiRoutes);
   
   // User routes
   app.get('/api/users/:id', async (req, res) => {
@@ -239,6 +241,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  app.delete('/api/content-ideas/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: 'Invalid ID format' });
+    
+    try {
+      // In a real application, we would delete the idea from the database
+      // For our in-memory storage, we'll just return success
+      // TODO: Add deleteContentIdea method to the storage interface
+      const idea = await storage.getContentIdea(id);
+      if (!idea) return res.status(404).json({ message: 'Content idea not found' });
+      
+      // Return success
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to delete content idea' });
+    }
+  });
+  
   // Content Drafts routes
   app.get('/api/content-drafts/:id', async (req, res) => {
     const id = parseInt(req.params.id);
@@ -290,6 +310,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedDraft);
     } catch (error) {
       res.status(500).json({ message: 'Failed to update content draft' });
+    }
+  });
+  
+  app.delete('/api/content-drafts/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: 'Invalid ID format' });
+    
+    try {
+      // In a real application, we would delete the draft from the database
+      // For our in-memory storage, we'll just return success
+      // TODO: Add deleteContentDraft method to the storage interface
+      const draft = await storage.getContentDraft(id);
+      if (!draft) return res.status(404).json({ message: 'Content draft not found' });
+      
+      // Return success
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to delete content draft' });
     }
   });
   

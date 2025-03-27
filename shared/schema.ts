@@ -128,6 +128,11 @@ export const contentIdeas = pgTable("content_ideas", {
   description: text("description").notNull(),
   niche: text("niche"),
   prompt: text("prompt"),
+  keyPoints: text("key_points"),
+  hashtags: text("hashtags"),
+  estimatedEngagement: real("estimated_engagement"),
+  platform: text("platform").default("tiktok"),
+  status: text("status").default("draft"), // draft, in-progress, ready, published
   aiGenerated: boolean("ai_generated").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   favorite: boolean("favorite").default(false),
@@ -141,6 +146,12 @@ export const contentDrafts = pgTable("content_drafts", {
   title: text("title").notNull(),
   content: text("content").notNull(),
   ideaId: integer("idea_id").references(() => contentIdeas.id),
+  hook: text("hook"),
+  structure: text("structure"), // JSON string with timing and sections
+  audioSuggestions: text("audio_suggestions"),
+  visualEffects: text("visual_effects"),
+  callToAction: text("call_to_action"),
+  platform: text("platform").default("tiktok"),
   status: text("status").default("draft"), // draft, in-progress, ready, published
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

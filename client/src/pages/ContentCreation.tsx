@@ -1,501 +1,911 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
+import { apiRequest } from '@/lib/queryClient';
+import { ContentIdea, ContentDraft } from '@shared/schema';
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-// Define types for our content entities
-interface ContentTemplate {
-  id: number;
-  title: string;
-  description: string;
-  thumbnailUrl: string | null;
-  avgViews: number | null;
-  popularity: string | null;
-  isNew: boolean | null;
-}
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { Star, StarOff, Copy, PlusCircle, Sparkles, PenLine, Check, Trash2, Clock } from 'lucide-react';
 
-interface ContentIdea {
-  id: number;
-  userId: number;
-  title: string;
-  description: string;
-  createdAt: Date | null;
-  niche: string | null;
-  prompt: string | null;
-  aiGenerated: boolean | null;
-  favorite: boolean | null;
-  tags: string[] | null;
-}
+// Form schema for idea generation
+const generateIdeasSchema = z.object({
+  topic: z.string().min(3, "Topic must be at least 3 characters"),
+  targetAudience: z.string().min(3, "Target audience must be at least 3 characters"),
+  contentType: z.string().optional(),
+  count: z.number().min(1).max(10).optional(),
+});
 
-interface ContentDraft {
-  id: number;
-  userId: number;
-  ideaId: number | null;
-  title: string;
-  content: string;
-  status: string | null;
-  createdAt: Date | null;
-  updatedAt: Date | null;
-}
-
-interface MediaFile {
-  id: number;
-  userId: number;
-  draftId: number | null;
-  filename: string;
-  fileType: string;
-  fileSize: number;
-  fileUrl: string;
-  thumbnailUrl: string | null;
-  duration: number | null;
-  width: number | null;
-  height: number | null;
-  uploadedAt: Date | null;
-}
+type GenerateIdeasFormValues = z.infer<typeof generateIdeasSchema>;
 
 const ContentCreation = () => {
-  const [activeTab, setActiveTab] = useState("templates");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
-  // Fetch templates
-  const { data: templates, isLoading: isLoadingTemplates } = useQuery<ContentTemplate[]>({
-    queryKey: ["/api/content-templates"],
+  const [activeTab, setActiveTab] = useState("ideas");
+  const [selectedIdea, setSelectedIdea] = useState<ContentIdea | null>(null);
+  const [selectedDraft, setSelectedDraft] = useState<ContentDraft | null>(null);
+
+  // Get content ideas for the current user
+  const {
+    data: ideas,
+    isLoading: ideasLoading,
+    error: ideasError,
+  } = useQuery({
+    queryKey: ['/api/users', user?.id, 'content-ideas'],
+    queryFn: async () => {
+      if (!user) return [];
+      const response = await fetch(`/api/users/${user.id}/content-ideas`);
+      if (!response.ok) throw new Error('Failed to fetch content ideas');
+      return await response.json();
+    },
+    enabled: !!user,
   });
-  
-  // Fetch content ideas
-  const { data: contentIdeas, isLoading: isLoadingIdeas } = useQuery<ContentIdea[]>({
-    queryKey: ["/api/users/1/content-ideas"],
+
+  // Get content drafts for the current user
+  const {
+    data: drafts,
+    isLoading: draftsLoading,
+    error: draftsError,
+  } = useQuery({
+    queryKey: ['/api/users', user?.id, 'content-drafts'],
+    queryFn: async () => {
+      if (!user) return [];
+      const response = await fetch(`/api/users/${user.id}/content-drafts`);
+      if (!response.ok) throw new Error('Failed to fetch content drafts');
+      return await response.json();
+    },
+    enabled: !!user,
   });
-  
-  // Fetch content drafts
-  const { data: contentDrafts, isLoading: isLoadingDrafts } = useQuery<ContentDraft[]>({
-    queryKey: ["/api/users/1/content-drafts"],
-  });
-  
-  // Fetch media files
-  const { data: mediaFiles, isLoading: isLoadingMedia } = useQuery<MediaFile[]>({
-    queryKey: ["/api/users/1/media-files"],
-  });
-  
-  // Form setup for drafts
-  const draftForm = useForm({
-    defaultValues: {
-      title: "",
-      content: "",
-      status: "draft",
-      userId: 1,
-    }
-  });
-  
-  // Form setup for content details
-  const detailsForm = useForm({
-    defaultValues: {
-      title: "",
-      description: "",
-      hashtags: "",
-    }
-  });
-  
-  // Create new content idea mutation
-  const createIdeaMutation = useMutation({
-    mutationFn: async (ideaData: any) => {
-      return await apiRequest(
-        'POST',
-        '/api/content-ideas',
-        ideaData
-      );
+
+  // Generate ideas mutation
+  const generateIdeasMutation = useMutation({
+    mutationFn: async (data: GenerateIdeasFormValues) => {
+      const response = await apiRequest('POST', '/api/ai/generate-ideas', data);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate ideas');
+      }
+      return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/users/1/content-ideas'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'content-ideas'] });
       toast({
-        title: "Success!",
-        description: "New content idea created.",
+        title: 'Ideas Generated',
+        description: 'New content ideas have been created successfully',
+        variant: 'default',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Failed to Generate Ideas',
+        description: error.message,
+        variant: 'destructive',
       });
     },
   });
-  
-  // Create new content draft mutation
-  const createDraftMutation = useMutation({
-    mutationFn: async (draftData: any) => {
-      return await apiRequest(
-        'POST',
-        '/api/content-drafts',
-        draftData
-      );
+
+  // Generate draft mutation
+  const generateDraftMutation = useMutation({
+    mutationFn: async (ideaId: number) => {
+      const response = await apiRequest('POST', '/api/ai/generate-draft', { ideaId });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate draft');
+      }
+      return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/users/1/content-drafts'] });
-      draftForm.reset();
+      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'content-drafts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'content-ideas'] });
       toast({
-        title: "Success!",
-        description: "New content draft created.",
+        title: 'Draft Generated',
+        description: 'New content draft has been created successfully',
+        variant: 'default',
+      });
+      setActiveTab("drafts");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Failed to Generate Draft',
+        description: error.message,
+        variant: 'destructive',
       });
     },
   });
-  
-  const onSubmitDraft = (data: any) => {
-    createDraftMutation.mutate(data);
+
+  // Toggle favorite mutation
+  const toggleFavoriteMutation = useMutation({
+    mutationFn: async (idea: ContentIdea) => {
+      const response = await apiRequest('PATCH', `/api/content-ideas/${idea.id}`, { 
+        favorite: !idea.favorite 
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update favorite status');
+      }
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'content-ideas'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Failed to Update',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Generate image prompts mutation
+  const generateImagePromptsMutation = useMutation({
+    mutationFn: async (draftId: number) => {
+      const response = await apiRequest('POST', '/api/ai/generate-image-prompts', { draftId });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate image prompts');
+      }
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Image Prompts Generated',
+        description: 'New image prompts have been created successfully',
+        variant: 'default',
+      });
+      setImagePrompts(data);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Failed to Generate Image Prompts',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Delete idea mutation
+  const deleteIdeaMutation = useMutation({
+    mutationFn: async (ideaId: number) => {
+      const response = await apiRequest('DELETE', `/api/content-ideas/${ideaId}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete idea');
+      }
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'content-ideas'] });
+      setSelectedIdea(null);
+      toast({
+        title: 'Idea Deleted',
+        description: 'Content idea has been deleted successfully',
+        variant: 'default',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Failed to Delete',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Delete draft mutation
+  const deleteDraftMutation = useMutation({
+    mutationFn: async (draftId: number) => {
+      const response = await apiRequest('DELETE', `/api/content-drafts/${draftId}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete draft');
+      }
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'content-drafts'] });
+      setSelectedDraft(null);
+      toast({
+        title: 'Draft Deleted',
+        description: 'Content draft has been deleted successfully',
+        variant: 'default',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Failed to Delete',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Form setup for idea generation
+  const form = useForm<GenerateIdeasFormValues>({
+    resolver: zodResolver(generateIdeasSchema),
+    defaultValues: {
+      topic: '',
+      targetAudience: '',
+      contentType: 'TikTok video',
+      count: 5,
+    },
+  });
+
+  // State for image prompts
+  const [imagePrompts, setImagePrompts] = useState<string[]>([]);
+
+  // Generate ideas handler
+  const onSubmit = (data: GenerateIdeasFormValues) => {
+    generateIdeasMutation.mutate(data);
   };
-  
-  const onSubmitDetails = (data: any) => {
-    console.log(data);
+
+  // Handle create draft from idea
+  const handleCreateDraft = (ideaId: number) => {
+    generateDraftMutation.mutate(ideaId);
+  };
+
+  // Handle generate image prompts
+  const handleGenerateImagePrompts = (draftId: number) => {
+    generateImagePromptsMutation.mutate(draftId);
+  };
+
+  // Copy to clipboard helper
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
     toast({
-      title: "Video details saved",
-      description: "Your video details have been saved successfully.",
+      title: 'Copied to Clipboard',
+      description: 'Content has been copied to clipboard',
+      variant: 'default',
     });
   };
-  
-  // Filter content ideas by category
-  const filteredIdeas = selectedCategory 
-    ? contentIdeas?.filter(idea => 
-        idea.tags?.includes(selectedCategory.toLowerCase())
-      )
-    : contentIdeas;
-  
+
+  // Format hashtags helper
+  const formatHashtags = (hashtags: string | null) => {
+    if (!hashtags) return [];
+    return hashtags.split(/\\s+/).filter(tag => tag.trim() !== '');
+  };
+
+  // Status badge helper
+  const getStatusBadge = (status: string | null) => {
+    if (!status) return null;
+    
+    const variants: Record<string, string> = {
+      'draft': 'secondary',
+      'in-progress': 'warning',
+      'ready': 'success',
+      'published': 'default',
+    };
+    
+    return (
+      <Badge variant={variants[status] as any || 'secondary'}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
+  };
+
+  // Format structure helper
+  const formatStructure = (structureJson: string | null) => {
+    if (!structureJson) return [];
+    
+    try {
+      const structure = JSON.parse(structureJson);
+      return structure;
+    } catch (e) {
+      return [];
+    }
+  };
+
   return (
-    <div>
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Content Creation Hub</h2>
-      
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6">
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-4xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">
+        Content Creation Hub
+      </h1>
+      <p className="text-muted-foreground mb-8">
+        Generate content ideas, create drafts, and optimize your TikTok videos all in one place.
+      </p>
+
+      <Tabs defaultValue="ideas" value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-3 mb-8">
+          <TabsTrigger value="ideas">Ideas</TabsTrigger>
+          <TabsTrigger value="drafts">Drafts</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
-          <TabsTrigger value="editor">Video Editor</TabsTrigger>
-          <TabsTrigger value="ideas">AI Ideas</TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="templates">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {isLoadingTemplates ? (
-              // Loading states
-              Array(6).fill(0).map((_, index) => (
-                <Card key={index} className="animate-pulse">
-                  <div className="h-48 bg-gray-200"></div>
-                  <CardContent className="p-4">
-                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              // Templates
-              templates?.map((template: any) => (
-                <Card key={template.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
-                  <div className="h-48 relative">
-                    <img 
-                      src={template.thumbnailUrl || "https://via.placeholder.com/400x240"} 
-                      alt={template.title}
-                      className="w-full h-full object-cover"
+
+        <TabsContent value="ideas" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Idea Generator Form */}
+            <Card className="md:col-span-1">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-blue-500" />
+                  Idea Generator
+                </CardTitle>
+                <CardDescription>
+                  Generate AI-powered content ideas for your TikTok videos
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="topic"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Topic</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Cooking tips, Travel hacks" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                    {template.popularity !== "normal" && (
-                      <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-                        {template.popularity === "trending" ? "Trending 🔥" : "New ✨"}
-                      </div>
-                    )}
-                  </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-medium mb-1">{template.title}</h3>
-                    <p className="text-xs text-gray-500">{template.description}</p>
-                    <Button className="w-full mt-3 bg-[#FF0050] hover:bg-opacity-90">
-                      Use Template
+
+                    <FormField
+                      control={form.control}
+                      name="targetAudience"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Target Audience</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Gen Z, Fitness enthusiasts" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="contentType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Content Type</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select content type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="TikTok video">TikTok Video</SelectItem>
+                              <SelectItem value="Instagram Reel">Instagram Reel</SelectItem>
+                              <SelectItem value="YouTube Short">YouTube Short</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="count"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Number of Ideas</FormLabel>
+                          <Select
+                            onValueChange={(value) => field.onChange(parseInt(value))}
+                            defaultValue={field.value?.toString()}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select number of ideas" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {[1, 3, 5, 10].map((num) => (
+                                <SelectItem key={num} value={num.toString()}>
+                                  {num}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <Button 
+                      type="submit" 
+                      className="w-full"
+                      disabled={generateIdeasMutation.isPending}
+                    >
+                      {generateIdeasMutation.isPending ? (
+                        <>Generating Ideas...</>
+                      ) : (
+                        <>Generate Ideas</>
+                      )}
                     </Button>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-          
-          <div className="mt-6 flex justify-center">
-            <Button variant="outline" className="mr-2">Load More</Button>
-            <Button variant="outline">Browse Categories</Button>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="editor">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader className="px-6 py-5 border-b border-gray-200">
-                  <CardTitle className="text-base font-medium">Video Editor</CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="aspect-video bg-gray-800 rounded-md mb-6 flex items-center justify-center">
-                    <span className="text-gray-400">Video Preview Area</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-4 gap-2 mb-6">
-                    {Array(8).fill(0).map((_, i) => (
-                      <div key={i} className="aspect-video bg-gray-200 rounded cursor-pointer hover:ring-2 hover:ring-[#FF0050]"></div>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+
+            {/* Ideas List */}
+            <Card className="md:col-span-1 min-h-[600px]">
+              <CardHeader>
+                <CardTitle>Your Ideas</CardTitle>
+                <CardDescription>
+                  {ideasLoading ? 'Loading ideas...' : 
+                   ideas?.length > 0 ? `${ideas.length} ideas found` : 'No ideas yet'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0 max-h-[500px] overflow-y-auto">
+                {ideasLoading ? (
+                  <div className="p-4 space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="space-y-2">
+                        <Skeleton className="h-6 w-3/4" />
+                        <Skeleton className="h-4 w-full" />
+                      </div>
                     ))}
                   </div>
-                  
-                  <div className="flex space-x-2">
-                    <Button variant="outline"><i className="ri-scissors-line mr-1"></i> Cut</Button>
-                    <Button variant="outline"><i className="ri-speed-line mr-1"></i> Speed</Button>
-                    <Button variant="outline"><i className="ri-music-line mr-1"></i> Sound</Button>
-                    <Button variant="outline"><i className="ri-text mr-1"></i> Text</Button>
-                    <Button variant="outline"><i className="ri-filter-line mr-1"></i> Filter</Button>
-                    <Button variant="outline"><i className="ri-magic-line mr-1"></i> Effects</Button>
+                ) : ideas?.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <p>No content ideas yet. Generate some ideas to get started!</p>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className="lg:col-span-1">
-              <Card className="mb-6">
-                <CardHeader className="px-6 py-5 border-b border-gray-200">
-                  <CardTitle className="text-base font-medium">Video Details</CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <Form {...detailsForm}>
-                    <form onSubmit={detailsForm.handleSubmit(onSubmitDetails)} className="space-y-4">
-                      <FormField
-                        control={detailsForm.control}
-                        name="title"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Title</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter video title" {...field} />
-                            </FormControl>
-                          </FormItem>
+                ) : (
+                  <div className="grid gap-1">
+                    {ideas?.map((idea: ContentIdea) => (
+                      <div 
+                        key={idea.id}
+                        className={`p-4 cursor-pointer border-l-2 hover:bg-accent/50 ${
+                          selectedIdea?.id === idea.id ? 'border-l-primary bg-accent/50' : 'border-l-transparent'
+                        }`}
+                        onClick={() => setSelectedIdea(idea)}
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          <h3 className="font-medium truncate max-w-[80%]">{idea.title}</h3>
+                          <div className="flex gap-1">
+                            {getStatusBadge(idea.status)}
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavoriteMutation.mutate(idea);
+                              }}
+                              className="text-amber-400 hover:text-amber-500"
+                            >
+                              {idea.favorite ? <Star className="h-4 w-4" /> : <StarOff className="h-4 w-4" />}
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{idea.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Idea Details */}
+            <Card className="md:col-span-1 min-h-[600px]">
+              <CardHeader>
+                <CardTitle>Idea Details</CardTitle>
+                <CardDescription>
+                  {selectedIdea ? 'View and create content from selected idea' : 'Select an idea to view details'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {!selectedIdea ? (
+                  <div className="p-8 text-center text-muted-foreground h-[400px] flex flex-col items-center justify-center">
+                    <PlusCircle className="h-10 w-10 mb-4 text-muted-foreground/50" />
+                    <p>Select an idea from the list to view its details</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-xl font-semibold mb-2">{selectedIdea.title}</h3>
+                      <p className="text-muted-foreground">{selectedIdea.description}</p>
+                    </div>
+
+                    {selectedIdea.keyPoints && (
+                      <div>
+                        <h4 className="font-medium mb-2">Key Points</h4>
+                        <ul className="list-disc list-inside text-sm space-y-1">
+                          {selectedIdea.keyPoints.split('\\n').map((point, index) => (
+                            <li key={index}>{point}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {selectedIdea.hashtags && (
+                      <div>
+                        <h4 className="font-medium mb-2">Hashtags</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {formatHashtags(selectedIdea.hashtags).map((tag, index) => (
+                            <Badge key={index} variant="outline">{tag}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedIdea.estimatedEngagement && (
+                      <div>
+                        <h4 className="font-medium mb-2">Estimated Engagement</h4>
+                        <div className="flex items-center">
+                          <div className="bg-blue-100 dark:bg-blue-950 rounded-full h-2 w-full overflow-hidden">
+                            <div 
+                              className="bg-blue-500 h-2"
+                              style={{ 
+                                width: `${Math.min(selectedIdea.estimatedEngagement * 10, 100)}%` 
+                              }}
+                            />
+                          </div>
+                          <span className="ml-2 text-sm font-medium">
+                            {selectedIdea.estimatedEngagement}/10
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="pt-4 space-x-3">
+                      <Button 
+                        variant="default" 
+                        onClick={() => handleCreateDraft(selectedIdea.id)}
+                        disabled={generateDraftMutation.isPending}
+                      >
+                        {generateDraftMutation.isPending ? (
+                          <>Generating Draft...</>
+                        ) : (
+                          <>
+                            <PenLine className="h-4 w-4 mr-2" />
+                            Create Draft
+                          </>
                         )}
-                      />
-                      
-                      <FormField
-                        control={detailsForm.control}
-                        name="description"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Description</FormLabel>
-                            <FormControl>
-                              <Textarea placeholder="Enter video description" {...field} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={detailsForm.control}
-                        name="hashtags"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Hashtags</FormLabel>
-                            <FormControl>
-                              <Input placeholder="food, vlog, summer (without #)" {...field} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <Button type="submit" className="w-full bg-[#FF0050] hover:bg-opacity-90">
-                        Save Draft
                       </Button>
-                    </form>
-                  </Form>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="px-6 py-5 border-b border-gray-200">
-                  <CardTitle className="text-base font-medium">AI Enhancement</CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    <Button variant="outline" className="w-full justify-start">
-                      <i className="ri-magic-line mr-2"></i> Auto-Enhance Video
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start">
-                      <i className="ri-scissors-2-line mr-2"></i> Smart Cut (Remove Silences)
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start">
-                      <i className="ri-subtitle mr-2"></i> Generate Captions
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start">
-                      <i className="ri-hashtag mr-2"></i> Suggest Trending Hashtags
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start">
-                      <i className="ri-musical-note-line mr-2"></i> Recommend Trending Sounds
-                    </Button>
+                      
+                      <Button
+                        variant="outline"
+                        onClick={() => copyToClipboard(
+                          `${selectedIdea.title}\n\n${selectedIdea.description}\n\n${selectedIdea.keyPoints || ''}\n\n${selectedIdea.hashtags || ''}`
+                        )}
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy
+                      </Button>
+                      
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => deleteIdeaMutation.mutate(selectedIdea.id)}
+                        disabled={deleteIdeaMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
-        
-        <TabsContent value="ideas">
-          <div className="mb-6">
-            <Input 
-              placeholder="Search for content ideas or topics..." 
-              className="max-w-md mb-4"
-            />
-            
-            <div className="flex flex-wrap space-x-2 mb-6">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className={selectedCategory === null ? "bg-[#FF0050] text-white" : ""}
-                onClick={() => setSelectedCategory(null)}
-              >
-                All
-              </Button>
-              {['Tutorial', 'Lifestyle', 'Food', 'Productivity', 'Wellness', 'Social-Media', 'Tips'].map((category) => (
-                <Button 
-                  key={category}
-                  variant="outline" 
-                  size="sm"
-                  className={selectedCategory === category ? "bg-[#FF0050] text-white" : ""}
-                  onClick={() => setSelectedCategory(category)}
-                >
-                  {category}
-                </Button>
-              ))}
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {isLoadingIdeas ? (
-              // Loading states
-              Array(6).fill(0).map((_, index) => (
-                <Card key={index} className="animate-pulse">
-                  <CardContent className="p-6">
-                    <div className="flex items-start mb-4">
-                      <div className="h-12 w-12 bg-gray-200 rounded-full mr-3"></div>
-                      <div className="flex-1">
-                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                        <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+
+        <TabsContent value="drafts">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Draft List */}
+            <Card className="md:col-span-1 min-h-[600px]">
+              <CardHeader>
+                <CardTitle>Your Drafts</CardTitle>
+                <CardDescription>
+                  {draftsLoading ? 'Loading drafts...' : 
+                   drafts?.length > 0 ? `${drafts.length} drafts found` : 'No drafts yet'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0 max-h-[500px] overflow-y-auto">
+                {draftsLoading ? (
+                  <div className="p-4 space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="space-y-2">
+                        <Skeleton className="h-6 w-3/4" />
+                        <Skeleton className="h-4 w-full" />
                       </div>
-                    </div>
-                    <div className="h-3 bg-gray-200 rounded w-full mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-full mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-                  </CardContent>
-                </Card>
-              ))
-            ) : filteredIdeas?.length === 0 ? (
-              <div className="col-span-full text-center py-8">
-                <div className="text-4xl mb-2">🔍</div>
-                <h3 className="text-lg font-medium mb-2">No content ideas found</h3>
-                <p className="text-gray-500 mb-4">Try selecting a different category or create a new idea.</p>
-                <Button className="bg-[#FF0050] hover:bg-opacity-90">
-                  Create New Idea
-                </Button>
-              </div>
-            ) : (
-              filteredIdeas?.map((idea) => (
-                <Card key={idea.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-start mb-4">
-                      <div className="p-3 rounded-full bg-amber-100 text-amber-500 mr-3">
-                        {idea.aiGenerated ? (
-                          <span className="text-xl">🤖</span>
-                        ) : (
-                          <span className="text-xl">💡</span>
-                        )}
+                    ))}
+                  </div>
+                ) : drafts?.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <p>No content drafts yet. Create a draft from your ideas!</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-1">
+                    {drafts?.map((draft: ContentDraft) => (
+                      <div 
+                        key={draft.id}
+                        className={`p-4 cursor-pointer border-l-2 hover:bg-accent/50 ${
+                          selectedDraft?.id === draft.id ? 'border-l-primary bg-accent/50' : 'border-l-transparent'
+                        }`}
+                        onClick={() => setSelectedDraft(draft)}
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          <h3 className="font-medium truncate max-w-[80%]">{draft.title}</h3>
+                          <div>
+                            {getStatusBadge(draft.status)}
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {draft.content.substring(0, 100)}...
+                        </p>
+                        <div className="mt-2 flex items-center text-sm text-muted-foreground">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {new Date(draft.updatedAt || draft.createdAt || '').toLocaleDateString()}
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-medium mb-1">{idea.title}</h3>
-                        <div className="flex flex-wrap gap-1">
-                          {idea.tags?.map((tag, i) => (
-                            <span key={i} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
-                              {tag}
-                            </span>
-                          ))}
-                          {idea.niche && (
-                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                              {idea.niche}
-                            </span>
-                          )}
-                          {idea.favorite && (
-                            <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">
-                              ⭐ Favorite
-                            </span>
-                          )}
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Draft Details */}
+            <Card className="md:col-span-2 min-h-[600px]">
+              <CardHeader>
+                <CardTitle>Draft Details</CardTitle>
+                <CardDescription>
+                  {selectedDraft ? 'View and edit selected draft' : 'Select a draft to view details'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="max-h-[500px] overflow-y-auto">
+                {!selectedDraft ? (
+                  <div className="p-8 text-center text-muted-foreground h-[400px] flex flex-col items-center justify-center">
+                    <PenLine className="h-10 w-10 mb-4 text-muted-foreground/50" />
+                    <p>Select a draft from the list to view its details</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div>
+                      <div className="flex justify-between items-start">
+                        <h3 className="text-xl font-semibold mb-2">{selectedDraft.title}</h3>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copyToClipboard(selectedDraft.content)}
+                          >
+                            <Copy className="h-4 w-4 mr-2" /> Copy
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={() => deleteDraftMutation.mutate(selectedDraft.id)}
+                            disabled={deleteDraftMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     </div>
-                    
-                    <p className="text-sm text-gray-500 mb-4">
-                      {idea.description}
-                    </p>
-                    
-                    <div className="flex space-x-2">
-                      {!idea.favorite && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="flex-1"
-                          onClick={() => {
-                            // Update to mark as favorite
-                            toast({
-                              title: "Saved to favorites",
-                              description: "Content idea added to your favorites."
-                            });
-                          }}
-                        >
-                          <i className="ri-star-line mr-1"></i> Favorite
-                        </Button>
-                      )}
-                      <Button 
-                        size="sm" 
-                        className="flex-1 bg-[#FF0050] hover:bg-opacity-90"
-                        onClick={() => {
-                          // Create a new draft from this idea
-                          const draftData = {
-                            userId: 1,
-                            ideaId: idea.id,
-                            title: idea.title,
-                            content: "",
-                            status: "draft",
-                            createdAt: new Date(),
-                          };
-                          createDraftMutation.mutate(draftData);
-                          setActiveTab("editor");
-                        }}
-                      >
-                        <i className="ri-edit-line mr-1"></i> Create Draft
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
+
+                    <Tabs defaultValue="script">
+                      <TabsList>
+                        <TabsTrigger value="script">Script</TabsTrigger>
+                        <TabsTrigger value="structure">Structure</TabsTrigger>
+                        <TabsTrigger value="media">Media Suggestions</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="script" className="mt-4">
+                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                          <div className="bg-accent/50 p-4 mb-4 rounded-md">
+                            <h4 className="font-medium mb-1">Hook</h4>
+                            <p>{selectedDraft.hook || "No hook provided"}</p>
+                          </div>
+                          
+                          <div className="whitespace-pre-line">
+                            {selectedDraft.content}
+                          </div>
+                          
+                          {selectedDraft.callToAction && (
+                            <div className="bg-accent/50 p-4 mt-4 rounded-md">
+                              <h4 className="font-medium mb-1">Call to Action</h4>
+                              <p>{selectedDraft.callToAction}</p>
+                            </div>
+                          )}
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="structure" className="mt-4">
+                        <div className="rounded-md border">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b">
+                                <th className="p-2 text-left font-medium">Time</th>
+                                <th className="p-2 text-left font-medium">Section</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedDraft.structure ? (
+                                formatStructure(selectedDraft.structure).map((item: any, index: number) => (
+                                  <tr key={index} className="border-b last:border-b-0">
+                                    <td className="p-2 text-sm">{item.time}</td>
+                                    <td className="p-2 text-sm">{item.section}</td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td colSpan={2} className="p-4 text-center text-muted-foreground">
+                                    No structure information available
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="media" className="mt-4">
+                        <div className="space-y-6">
+                          <Accordion type="single" collapsible className="w-full">
+                            {selectedDraft.audioSuggestions && (
+                              <AccordionItem value="audio">
+                                <AccordionTrigger>Audio Suggestions</AccordionTrigger>
+                                <AccordionContent>
+                                  <ul className="list-disc list-inside text-sm space-y-1">
+                                    {selectedDraft.audioSuggestions.split('\\n').map((item, index) => (
+                                      <li key={index}>{item}</li>
+                                    ))}
+                                  </ul>
+                                </AccordionContent>
+                              </AccordionItem>
+                            )}
+                            
+                            {selectedDraft.visualEffects && (
+                              <AccordionItem value="visual">
+                                <AccordionTrigger>Visual Effects</AccordionTrigger>
+                                <AccordionContent>
+                                  <ul className="list-disc list-inside text-sm space-y-1">
+                                    {selectedDraft.visualEffects.split('\\n').map((item, index) => (
+                                      <li key={index}>{item}</li>
+                                    ))}
+                                  </ul>
+                                </AccordionContent>
+                              </AccordionItem>
+                            )}
+                            
+                            <AccordionItem value="image-prompts">
+                              <AccordionTrigger>Image Prompts</AccordionTrigger>
+                              <AccordionContent>
+                                {imagePrompts.length > 0 ? (
+                                  <div className="space-y-3">
+                                    {imagePrompts.map((prompt, index) => (
+                                      <div key={index} className="relative group">
+                                        <div className="p-3 rounded-md bg-accent/50 text-sm">
+                                          {prompt}
+                                        </div>
+                                        <button 
+                                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          onClick={() => copyToClipboard(prompt)}
+                                        >
+                                          <Copy className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="text-center p-4">
+                                    <p className="text-muted-foreground mb-4">No image prompts generated yet</p>
+                                    <Button
+                                      onClick={() => handleGenerateImagePrompts(selectedDraft.id)}
+                                      disabled={generateImagePromptsMutation.isPending}
+                                    >
+                                      {generateImagePromptsMutation.isPending ? (
+                                        <>Generating Prompts...</>
+                                      ) : (
+                                        <>Generate Image Prompts</>
+                                      )}
+                                    </Button>
+                                  </div>
+                                )}
+                              </AccordionContent>
+                            </AccordionItem>
+                          </Accordion>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-          
-          <div className="mt-8 flex justify-center gap-4">
-            <Button 
-              variant="outline" 
-              className="flex items-center"
-              onClick={() => {
-                // Modal to create new idea
-                toast({
-                  title: "Creating new idea",
-                  description: "A new content idea is being created."
-                });
-              }}
-            >
-              <i className="ri-add-line mr-1"></i> Create New Idea
-            </Button>
-            <Button 
-              className="bg-[#FF0050] hover:bg-opacity-90 flex items-center"
-              onClick={() => {
-                // Generate AI suggestions
-                toast({
-                  title: "Generating ideas",
-                  description: "AI is generating new content ideas based on your niche and audience."
-                });
-              }}
-            >
-              <i className="ri-ai-generate mr-1"></i> Generate AI Ideas
-            </Button>
+        </TabsContent>
+
+        <TabsContent value="templates">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="col-span-full">
+              <CardHeader>
+                <CardTitle>Content Templates</CardTitle>
+                <CardDescription>
+                  Pre-built templates for different TikTok content formats
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Template cards will go here */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Before/After Transformation</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Perfect for showing impressive results or changes over time. Great for fitness, learning, makeover or home improvement content.
+                      </p>
+                      <Button variant="outline" className="w-full">Use Template</Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Step-by-Step Tutorial</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Break down complicated processes into simple, easy-to-follow steps. Ideal for DIY, cooking, or educational content.
+                      </p>
+                      <Button variant="outline" className="w-full">Use Template</Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Trending Sound Reaction</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Jump on viral sounds with your own creative twist. Helps boost reach through algorithmic recommendations.
+                      </p>
+                      <Button variant="outline" className="w-full">Use Template</Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>
