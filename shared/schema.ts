@@ -7,9 +7,43 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  email: text("email").notNull().unique(),
   displayName: text("display_name").notNull(),
-  avatar: text("avatar"),
-  handle: text("handle").notNull().unique(),
+  bio: text("bio"),
+  profileImageUrl: text("profile_image_url"),
+  role: text("role").default("user").notNull(), // user, creator, admin
+  provider: text("provider").default("email").notNull(), // email, google, twitter, tiktok
+  providerId: text("provider_id"),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
+  twoFactorSecret: text("two_factor_secret"),
+  tiktokHandle: text("tiktok_handle"),
+  country: text("country"),
+  dateOfBirth: timestamp("date_of_birth"),
+  phoneNumber: text("phone_number"),
+  emailVerified: boolean("email_verified").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  lastLoginAt: timestamp("last_login_at"),
+  preferences: jsonb("preferences").default({
+    notifications: true,
+    theme: "system",
+    language: "en"
+  }),
+  socialProfiles: jsonb("social_profiles").default({
+    instagram: null,
+    youtube: null,
+    twitter: null,
+    facebook: null,
+    tiktok: null
+  }),
+  contentCreatorInfo: jsonb("content_creator_info").default({
+    niche: [],
+    brandDeals: false,
+    monetized: false,
+    avgViews: null,
+    avgEngagement: null,
+    contentFrequency: null
+  }),
 });
 
 // Video model

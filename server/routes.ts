@@ -14,10 +14,17 @@ import {
   insertContentDraftSchema,
   insertMediaFileSchema
 } from "@shared/schema";
+import authRoutes from "./routes/auth.routes";
+import { setupAuth } from "./auth";
+import express from "express";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // prefix all routes with /api
-  const apiRouter = app.route('/api');
+  // Set up authentication
+  setupAuth(app);
+  
+  // Set up route middleware
+  app.use(express.json());
+  app.use('/api/auth', authRoutes);
   
   // User routes
   app.get('/api/users/:id', async (req, res) => {
