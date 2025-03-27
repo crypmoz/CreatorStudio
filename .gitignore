@@ -1,6 +1,62 @@
-node_modules
-dist
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Distribution directories
+dist/
+build/
+.turbo/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Coverage directory
+coverage/
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS files
 .DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz
+Thumbs.db
+
+# Testing files
+cypress/screenshots/
+cypress/videos/
+cypress/downloads/
+
+# Database files
+*.sqlite
+*.db
+
+# Cache directories
+.npm/
+.eslintcache
+.stylelintcache
+.node_repl_history
+
+# Temporary files
+*.log
+*.tmp
+*.temp
+
+# Lockfiles (keep only one based on your package manager)
+# yarn.lock
+# package-lock.json
+# pnpm-lock.yaml
