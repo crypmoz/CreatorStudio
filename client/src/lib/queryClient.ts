@@ -12,9 +12,18 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  // Get auth token from localStorage if available
+  const token = localStorage.getItem("token");
+  
+  // Prepare headers
+  const headers: HeadersInit = {
+    ...(data ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+  };
+
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -29,7 +38,16 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    // Get auth token from localStorage if available
+    const token = localStorage.getItem("token");
+    
+    // Prepare headers
+    const headers: HeadersInit = token 
+      ? { "Authorization": `Bearer ${token}` }
+      : {};
+
     const res = await fetch(queryKey[0] as string, {
+      headers,
       credentials: "include",
     });
 
@@ -55,3 +73,29 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// Interceptor to handle auth token
+export function setupAuthInterceptor() {
+  // Check for token on startup and set it in localStorage if needed
+  const checkAuthToken = () => {
+    // Logic to verify if token exists and is valid
+    const token = localStorage.getItem("token");
+    if (!token) {
+      // Clear any user data if no token exists
+      queryClient.setQueryData(["/api/auth/me"], null);
+    }
+  };
+
+  // Call once on initialization
+  checkAuthToken();
+
+  // Add event listener for storage changes (for multi-tab support)
+  window.addEventListener("storage", (e) => {
+    if (e.key === "token") {
+      if (!e.newValue) {
+        // Token was removed in another tab
+        queryClient.setQueryData(["/api/auth/me"], null);
+      }
+    }
+  });
+}
