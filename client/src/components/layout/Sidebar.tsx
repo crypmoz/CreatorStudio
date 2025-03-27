@@ -10,7 +10,13 @@ interface SidebarProps {
 const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
   const [location] = useLocation();
   
-  const { data: user } = useQuery({
+  const { data: user } = useQuery<{
+    id: number;
+    username: string;
+    displayName: string;
+    handle?: string;
+    avatar?: string;
+  }>({
     queryKey: ["/api/users/1"],
   });
 
@@ -55,11 +61,9 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
                 : "flex items-center px-4 py-3 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50";
               
               return (
-                <Link key={item.path} href={item.path}>
-                  <a className={linkClass}>
-                    {item.icon}
-                    {item.label}
-                  </a>
+                <Link key={item.path} href={item.path} className={linkClass}>
+                  {item.icon}
+                  {item.label}
                 </Link>
               );
             })}
@@ -91,9 +95,9 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
                 )}
               </div>
               <div className="mt-3">
-                <a href="#" className="text-xs text-[#FF0050] flex items-center">
+                <button className="text-xs text-[#FF0050] flex items-center hover:underline">
                   <RiSettingsLine className="mr-1" /> Account Settings
-                </a>
+                </button>
               </div>
             </div>
           </div>

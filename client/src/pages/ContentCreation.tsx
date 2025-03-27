@@ -360,7 +360,7 @@ const ContentCreation = () => {
         Generate content ideas, create drafts, and optimize your TikTok videos all in one place.
       </p>
 
-      <Tabs defaultValue="ideas" value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4 mb-8">
           <TabsTrigger value="ideas">Ideas</TabsTrigger>
           <TabsTrigger value="drafts">Drafts</TabsTrigger>
@@ -420,7 +420,7 @@ const ContentCreation = () => {
                           <FormLabel>Content Type</FormLabel>
                           <Select
                             onValueChange={field.onChange}
-                            defaultValue={field.value}
+                            value={field.value}
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -446,7 +446,7 @@ const ContentCreation = () => {
                           <FormLabel>Number of Ideas</FormLabel>
                           <Select
                             onValueChange={(value) => field.onChange(parseInt(value))}
-                            defaultValue={field.value?.toString()}
+                            value={field.value?.toString()}
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -852,7 +852,7 @@ const ContentCreation = () => {
                       </div>
                     </div>
 
-                    <Tabs defaultValue="script">
+                    <Tabs value="script">
                       <TabsList>
                         <TabsTrigger value="script">Script</TabsTrigger>
                         <TabsTrigger value="structure">Structure</TabsTrigger>
