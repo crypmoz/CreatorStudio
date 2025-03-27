@@ -5,7 +5,10 @@ import {
   ScheduledPost, InsertScheduledPost,
   Comment, InsertComment,
   Revenue, InsertRevenue,
-  Analytics, InsertAnalytics
+  Analytics, InsertAnalytics,
+  ContentIdea, InsertContentIdea,
+  ContentDraft, InsertContentDraft,
+  MediaFile, InsertMediaFile
 } from "@shared/schema";
 
 export interface IStorage {
@@ -46,6 +49,26 @@ export interface IStorage {
   getLatestAnalyticsByUserId(userId: number): Promise<Analytics | undefined>;
   createAnalytics(analytics: InsertAnalytics): Promise<Analytics>;
   updateAnalytics(id: number, data: Partial<Analytics>): Promise<Analytics | undefined>;
+  
+  // Content Idea operations
+  getContentIdea(id: number): Promise<ContentIdea | undefined>;
+  getContentIdeasByUserId(userId: number): Promise<ContentIdea[]>;
+  createContentIdea(idea: InsertContentIdea): Promise<ContentIdea>;
+  updateContentIdea(id: number, data: Partial<ContentIdea>): Promise<ContentIdea | undefined>;
+  
+  // Content Draft operations
+  getContentDraft(id: number): Promise<ContentDraft | undefined>;
+  getContentDraftsByUserId(userId: number): Promise<ContentDraft[]>;
+  getContentDraftsByIdeaId(ideaId: number): Promise<ContentDraft[]>;
+  createContentDraft(draft: InsertContentDraft): Promise<ContentDraft>;
+  updateContentDraft(id: number, data: Partial<ContentDraft>): Promise<ContentDraft | undefined>;
+  
+  // Media File operations
+  getMediaFile(id: number): Promise<MediaFile | undefined>;
+  getMediaFilesByUserId(userId: number): Promise<MediaFile[]>;
+  getMediaFilesByDraftId(draftId: number): Promise<MediaFile[]>;
+  createMediaFile(file: InsertMediaFile): Promise<MediaFile>;
+  updateMediaFile(id: number, data: Partial<MediaFile>): Promise<MediaFile | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -56,6 +79,9 @@ export class MemStorage implements IStorage {
   private comments: Map<number, Comment>;
   private revenues: Map<number, Revenue>;
   private analytics: Map<number, Analytics>;
+  private contentIdeas: Map<number, ContentIdea>;
+  private contentDrafts: Map<number, ContentDraft>;
+  private mediaFiles: Map<number, MediaFile>;
   
   private currentUserId: number;
   private currentVideoId: number;
@@ -64,6 +90,9 @@ export class MemStorage implements IStorage {
   private currentCommentId: number;
   private currentRevenueId: number;
   private currentAnalyticsId: number;
+  private currentContentIdeaId: number;
+  private currentContentDraftId: number;
+  private currentMediaFileId: number;
 
   constructor() {
     this.users = new Map();
@@ -73,6 +102,9 @@ export class MemStorage implements IStorage {
     this.comments = new Map();
     this.revenues = new Map();
     this.analytics = new Map();
+    this.contentIdeas = new Map();
+    this.contentDrafts = new Map();
+    this.mediaFiles = new Map();
     
     this.currentUserId = 1;
     this.currentVideoId = 1;
@@ -81,6 +113,9 @@ export class MemStorage implements IStorage {
     this.currentCommentId = 1;
     this.currentRevenueId = 1;
     this.currentAnalyticsId = 1;
+    this.currentContentIdeaId = 1;
+    this.currentContentDraftId = 1;
+    this.currentMediaFileId = 1;
     
     // Initialize with some demo data
     this.initializeDemoData();
@@ -242,6 +277,99 @@ export class MemStorage implements IStorage {
     const updatedAnalytics = { ...analytics, ...data };
     this.analytics.set(id, updatedAnalytics);
     return updatedAnalytics;
+  }
+  
+  // Content Idea operations
+  async getContentIdea(id: number): Promise<ContentIdea | undefined> {
+    return this.contentIdeas.get(id);
+  }
+  
+  async getContentIdeasByUserId(userId: number): Promise<ContentIdea[]> {
+    return Array.from(this.contentIdeas.values()).filter(
+      (idea) => idea.userId === userId
+    );
+  }
+  
+  async createContentIdea(idea: InsertContentIdea): Promise<ContentIdea> {
+    const id = this.currentContentIdeaId++;
+    const newIdea: ContentIdea = { ...idea, id };
+    this.contentIdeas.set(id, newIdea);
+    return newIdea;
+  }
+  
+  async updateContentIdea(id: number, data: Partial<ContentIdea>): Promise<ContentIdea | undefined> {
+    const idea = this.contentIdeas.get(id);
+    if (!idea) return undefined;
+    
+    const updatedIdea = { ...idea, ...data };
+    this.contentIdeas.set(id, updatedIdea);
+    return updatedIdea;
+  }
+  
+  // Content Draft operations
+  async getContentDraft(id: number): Promise<ContentDraft | undefined> {
+    return this.contentDrafts.get(id);
+  }
+  
+  async getContentDraftsByUserId(userId: number): Promise<ContentDraft[]> {
+    return Array.from(this.contentDrafts.values()).filter(
+      (draft) => draft.userId === userId
+    );
+  }
+  
+  async getContentDraftsByIdeaId(ideaId: number): Promise<ContentDraft[]> {
+    return Array.from(this.contentDrafts.values()).filter(
+      (draft) => draft.ideaId === ideaId
+    );
+  }
+  
+  async createContentDraft(draft: InsertContentDraft): Promise<ContentDraft> {
+    const id = this.currentContentDraftId++;
+    const newDraft: ContentDraft = { ...draft, id };
+    this.contentDrafts.set(id, newDraft);
+    return newDraft;
+  }
+  
+  async updateContentDraft(id: number, data: Partial<ContentDraft>): Promise<ContentDraft | undefined> {
+    const draft = this.contentDrafts.get(id);
+    if (!draft) return undefined;
+    
+    const updatedDraft = { ...draft, ...data };
+    this.contentDrafts.set(id, updatedDraft);
+    return updatedDraft;
+  }
+  
+  // Media File operations
+  async getMediaFile(id: number): Promise<MediaFile | undefined> {
+    return this.mediaFiles.get(id);
+  }
+  
+  async getMediaFilesByUserId(userId: number): Promise<MediaFile[]> {
+    return Array.from(this.mediaFiles.values()).filter(
+      (file) => file.userId === userId
+    );
+  }
+  
+  async getMediaFilesByDraftId(draftId: number): Promise<MediaFile[]> {
+    return Array.from(this.mediaFiles.values()).filter(
+      (file) => file.draftId === draftId
+    );
+  }
+  
+  async createMediaFile(file: InsertMediaFile): Promise<MediaFile> {
+    const id = this.currentMediaFileId++;
+    const newFile: MediaFile = { ...file, id };
+    this.mediaFiles.set(id, newFile);
+    return newFile;
+  }
+  
+  async updateMediaFile(id: number, data: Partial<MediaFile>): Promise<MediaFile | undefined> {
+    const file = this.mediaFiles.get(id);
+    if (!file) return undefined;
+    
+    const updatedFile = { ...file, ...data };
+    this.mediaFiles.set(id, updatedFile);
+    return updatedFile;
   }
   
   // Initialize with demo data
@@ -409,6 +537,111 @@ export class MemStorage implements IStorage {
     };
     
     this.analytics.set(analytics.id, analytics);
+    
+    // Create some demo content ideas
+    const contentIdea1: ContentIdea = {
+      id: this.currentContentIdeaId++,
+      userId: user.id,
+      title: "Morning Routine Step-by-Step",
+      description: "A detailed breakdown of a productive morning routine with tips for optimal energy.",
+      niche: "Productivity",
+      prompt: "Create a morning routine video with step-by-step instructions",
+      aiGenerated: true,
+      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      favorite: true,
+      tags: ["morning-routine", "productivity", "wellness"]
+    };
+    
+    const contentIdea2: ContentIdea = {
+      id: this.currentContentIdeaId++,
+      userId: user.id,
+      title: "5 Hidden TikTok Features",
+      description: "Showcase lesser-known TikTok features that can help creators stand out.",
+      niche: "Social Media",
+      prompt: "What are some hidden TikTok features most people don't know about?",
+      aiGenerated: true,
+      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      favorite: false,
+      tags: ["tiktok", "tips", "social-media"]
+    };
+    
+    this.contentIdeas.set(contentIdea1.id, contentIdea1);
+    this.contentIdeas.set(contentIdea2.id, contentIdea2);
+    
+    // Create some demo content drafts
+    const contentDraft1: ContentDraft = {
+      id: this.currentContentDraftId++,
+      userId: user.id,
+      ideaId: contentIdea1.id,
+      title: "My Productive Morning Routine 2025",
+      content: "# Morning Routine Script\n\n## Intro\nHey everyone! Today I'm showing you my morning routine that changed my productivity forever.\n\n## Segment 1: Wake Up (5:30 AM)\n*Show alarm ringing and getting out of bed*\nVoiceover: \"The key is to get up immediately when the alarm goes off!\"\n\n## Segment 2: Hydration\n*Show drinking water from bedside table*\nVoiceover: \"First thing - hydrate! Your body is dehydrated after 8 hours of sleep.\"\n\n## Segment 3: Stretching\n*Quick montage of simple stretches*\n\n## Segment 4: Meditation (10 mins)\n*Sitting peacefully in meditation spot*\n\n## Segment 5: Journaling\n*Writing in journal*\nVoiceover: \"I write three things I'm grateful for every morning.\"\n\n## Segment 6: Breakfast\n*Preparing healthy breakfast*\n\n## Conclusion\nVoiceover: \"This routine has transformed my energy levels and productivity! Try it for a week and see the difference.\"",
+      status: "in-progress",
+      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+    };
+    
+    const contentDraft2: ContentDraft = {
+      id: this.currentContentDraftId++,
+      userId: user.id,
+      ideaId: contentIdea2.id,
+      title: "5 TikTok Features You're Not Using (But Should Be!)",
+      content: "# Hidden TikTok Features Script\n\n## Intro\n\"You're missing out on these 5 powerful TikTok features! Let me show you how to use them...\"\n\n## Feature 1: Advanced Analytics\n*Show screen recording of navigating to hidden analytics page*\nVoiceover: \"Did you know you can see exactly when your followers are most active? Here's how...\"\n\n## Feature 2: Content Calendar\n*Screen recording of calendar feature*\n\n## Feature 3: Sound Mixing\n*Demonstrate advanced audio editing*\n\n## Feature 4: Keyword Research Tool\n*Show how to find trending keywords*\n\n## Feature 5: Caption Formatting Tricks\n*Demonstrate little-known formatting options*\n\n## Conclusion\n\"Which of these features will you try first? Let me know in the comments!\"",
+      status: "draft",
+      createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+      updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+    };
+    
+    this.contentDrafts.set(contentDraft1.id, contentDraft1);
+    this.contentDrafts.set(contentDraft2.id, contentDraft2);
+    
+    // Create some demo media files
+    const mediaFile1: MediaFile = {
+      id: this.currentMediaFileId++,
+      userId: user.id,
+      draftId: contentDraft1.id,
+      filename: "morning_routine_intro.mp4",
+      fileType: "video",
+      fileSize: 8240000,
+      fileUrl: "https://example.com/media/morning_routine_intro.mp4",
+      thumbnailUrl: "https://images.unsplash.com/photo-1599058917765-a780eda07a3e?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&h=200&q=80",
+      duration: 15.4,
+      width: 1080,
+      height: 1920,
+      uploadedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+    };
+    
+    const mediaFile2: MediaFile = {
+      id: this.currentMediaFileId++,
+      userId: user.id,
+      draftId: contentDraft1.id,
+      filename: "morning_stretching.mp4",
+      fileType: "video",
+      fileSize: 12480000,
+      fileUrl: "https://example.com/media/morning_stretching.mp4",
+      thumbnailUrl: "https://images.unsplash.com/photo-1599058917817-4628db257274?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&h=200&q=80",
+      duration: 22.8,
+      width: 1080,
+      height: 1920,
+      uploadedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+    };
+    
+    const mediaFile3: MediaFile = {
+      id: this.currentMediaFileId++,
+      userId: user.id,
+      draftId: contentDraft2.id,
+      filename: "tiktok_features_thumbnail.jpg",
+      fileType: "image",
+      fileSize: 1240000,
+      fileUrl: "https://example.com/media/tiktok_features_thumbnail.jpg",
+      thumbnailUrl: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&h=200&q=80",
+      width: 1080,
+      height: 1920,
+      uploadedAt: new Date(Date.now() - 12 * 60 * 60 * 1000)
+    };
+    
+    this.mediaFiles.set(mediaFile1.id, mediaFile1);
+    this.mediaFiles.set(mediaFile2.id, mediaFile2);
+    this.mediaFiles.set(mediaFile3.id, mediaFile3);
   }
 }
 

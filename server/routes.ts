@@ -9,7 +9,10 @@ import {
   insertScheduledPostSchema, 
   insertCommentSchema, 
   insertRevenueSchema, 
-  insertAnalyticsSchema 
+  insertAnalyticsSchema,
+  insertContentIdeaSchema,
+  insertContentDraftSchema,
+  insertMediaFileSchema
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -181,6 +184,160 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!analytics) return res.status(404).json({ message: 'Analytics not found' });
     
     res.json(analytics);
+  });
+  
+  // Content Ideas routes
+  app.get('/api/content-ideas/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: 'Invalid ID format' });
+    
+    const idea = await storage.getContentIdea(id);
+    if (!idea) return res.status(404).json({ message: 'Content idea not found' });
+    
+    res.json(idea);
+  });
+  
+  app.get('/api/users/:userId/content-ideas', async (req, res) => {
+    const userId = parseInt(req.params.userId);
+    if (isNaN(userId)) return res.status(400).json({ message: 'Invalid user ID format' });
+    
+    const ideas = await storage.getContentIdeasByUserId(userId);
+    res.json(ideas);
+  });
+  
+  app.post('/api/content-ideas', async (req, res) => {
+    try {
+      const ideaData = insertContentIdeaSchema.parse(req.body);
+      const idea = await storage.createContentIdea(ideaData);
+      res.status(201).json(idea);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Invalid content idea data', errors: error.errors });
+      }
+      res.status(500).json({ message: 'Failed to create content idea' });
+    }
+  });
+  
+  app.patch('/api/content-ideas/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: 'Invalid ID format' });
+    
+    try {
+      const updatedIdea = await storage.updateContentIdea(id, req.body);
+      if (!updatedIdea) return res.status(404).json({ message: 'Content idea not found' });
+      
+      res.json(updatedIdea);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to update content idea' });
+    }
+  });
+  
+  // Content Drafts routes
+  app.get('/api/content-drafts/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: 'Invalid ID format' });
+    
+    const draft = await storage.getContentDraft(id);
+    if (!draft) return res.status(404).json({ message: 'Content draft not found' });
+    
+    res.json(draft);
+  });
+  
+  app.get('/api/users/:userId/content-drafts', async (req, res) => {
+    const userId = parseInt(req.params.userId);
+    if (isNaN(userId)) return res.status(400).json({ message: 'Invalid user ID format' });
+    
+    const drafts = await storage.getContentDraftsByUserId(userId);
+    res.json(drafts);
+  });
+  
+  app.get('/api/content-ideas/:ideaId/drafts', async (req, res) => {
+    const ideaId = parseInt(req.params.ideaId);
+    if (isNaN(ideaId)) return res.status(400).json({ message: 'Invalid idea ID format' });
+    
+    const drafts = await storage.getContentDraftsByIdeaId(ideaId);
+    res.json(drafts);
+  });
+  
+  app.post('/api/content-drafts', async (req, res) => {
+    try {
+      const draftData = insertContentDraftSchema.parse(req.body);
+      const draft = await storage.createContentDraft(draftData);
+      res.status(201).json(draft);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Invalid content draft data', errors: error.errors });
+      }
+      res.status(500).json({ message: 'Failed to create content draft' });
+    }
+  });
+  
+  app.patch('/api/content-drafts/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: 'Invalid ID format' });
+    
+    try {
+      const updatedDraft = await storage.updateContentDraft(id, req.body);
+      if (!updatedDraft) return res.status(404).json({ message: 'Content draft not found' });
+      
+      res.json(updatedDraft);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to update content draft' });
+    }
+  });
+  
+  // Media Files routes
+  app.get('/api/media-files/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: 'Invalid ID format' });
+    
+    const file = await storage.getMediaFile(id);
+    if (!file) return res.status(404).json({ message: 'Media file not found' });
+    
+    res.json(file);
+  });
+  
+  app.get('/api/users/:userId/media-files', async (req, res) => {
+    const userId = parseInt(req.params.userId);
+    if (isNaN(userId)) return res.status(400).json({ message: 'Invalid user ID format' });
+    
+    const files = await storage.getMediaFilesByUserId(userId);
+    res.json(files);
+  });
+  
+  app.get('/api/content-drafts/:draftId/media-files', async (req, res) => {
+    const draftId = parseInt(req.params.draftId);
+    if (isNaN(draftId)) return res.status(400).json({ message: 'Invalid draft ID format' });
+    
+    const files = await storage.getMediaFilesByDraftId(draftId);
+    res.json(files);
+  });
+  
+  app.post('/api/media-files', async (req, res) => {
+    try {
+      const fileData = insertMediaFileSchema.parse(req.body);
+      const file = await storage.createMediaFile(fileData);
+      res.status(201).json(file);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Invalid media file data', errors: error.errors });
+      }
+      res.status(500).json({ message: 'Failed to create media file' });
+    }
+  });
+  
+  app.patch('/api/media-files/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: 'Invalid ID format' });
+    
+    try {
+      const updatedFile = await storage.updateMediaFile(id, req.body);
+      if (!updatedFile) return res.status(404).json({ message: 'Media file not found' });
+      
+      res.json(updatedFile);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to update media file' });
+    }
   });
   
   // Simple authentication route for demo purposes

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, real, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, real, jsonb, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -86,6 +86,48 @@ export const analytics = pgTable("analytics", {
   dailyMetrics: jsonb("daily_metrics"),
 });
 
+// Content Ideas model (for AI-generated ideas)
+export const contentIdeas = pgTable("content_ideas", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  niche: text("niche"),
+  prompt: text("prompt"),
+  aiGenerated: boolean("ai_generated").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  favorite: boolean("favorite").default(false),
+  tags: text("tags").array(),
+});
+
+// Content Drafts model (for scripts, drafts, etc.)
+export const contentDrafts = pgTable("content_drafts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  ideaId: integer("idea_id").references(() => contentIdeas.id),
+  status: text("status").default("draft"), // draft, in-progress, ready, published
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Media Files model (for uploaded videos, images, etc.)
+export const mediaFiles = pgTable("media_files", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  filename: text("filename").notNull(),
+  fileType: text("file_type").notNull(), // video, image, audio
+  fileSize: integer("file_size").notNull(),
+  fileUrl: text("file_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
+  duration: real("duration"), // For videos/audio
+  width: integer("width"), // For images/videos
+  height: integer("height"), // For images/videos
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  draftId: integer("draft_id").references(() => contentDrafts.id),
+});
+
 // Insert schemas for all models
 export const insertUserSchema = createInsertSchema(users);
 export const insertVideoSchema = createInsertSchema(videos).omit({ id: true });
@@ -94,6 +136,9 @@ export const insertScheduledPostSchema = createInsertSchema(scheduledPosts).omit
 export const insertCommentSchema = createInsertSchema(comments).omit({ id: true });
 export const insertRevenueSchema = createInsertSchema(revenue).omit({ id: true });
 export const insertAnalyticsSchema = createInsertSchema(analytics).omit({ id: true });
+export const insertContentIdeaSchema = createInsertSchema(contentIdeas).omit({ id: true });
+export const insertContentDraftSchema = createInsertSchema(contentDrafts).omit({ id: true });
+export const insertMediaFileSchema = createInsertSchema(mediaFiles).omit({ id: true });
 
 // Types for all models
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -116,3 +161,12 @@ export type Revenue = typeof revenue.$inferSelect;
 
 export type InsertAnalytics = z.infer<typeof insertAnalyticsSchema>;
 export type Analytics = typeof analytics.$inferSelect;
+
+export type InsertContentIdea = z.infer<typeof insertContentIdeaSchema>;
+export type ContentIdea = typeof contentIdeas.$inferSelect;
+
+export type InsertContentDraft = z.infer<typeof insertContentDraftSchema>;
+export type ContentDraft = typeof contentDrafts.$inferSelect;
+
+export type InsertMediaFile = z.infer<typeof insertMediaFileSchema>;
+export type MediaFile = typeof mediaFiles.$inferSelect;
