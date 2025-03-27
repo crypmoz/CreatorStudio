@@ -134,7 +134,12 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
-    const user: User = { ...insertUser, id };
+    // Ensure null values for optional fields
+    const user: User = { 
+      ...insertUser, 
+      id,
+      avatar: insertUser.avatar || null 
+    };
     this.users.set(id, user);
     return user;
   }
@@ -152,7 +157,22 @@ export class MemStorage implements IStorage {
   
   async createVideo(video: InsertVideo): Promise<Video> {
     const id = this.currentVideoId++;
-    const newVideo: Video = { ...video, id };
+    // Ensure all required fields have proper null values if not provided
+    const newVideo: Video = { 
+      ...video, 
+      id,
+      description: video.description || null,
+      thumbnailUrl: video.thumbnailUrl || null,
+      views: video.views || null,
+      likes: video.likes || null,
+      shares: video.shares || null,
+      comments: video.comments || null,
+      watchTime: video.watchTime || null,
+      completionRate: video.completionRate || null,
+      viralityScore: video.viralityScore || null,
+      createdAt: video.createdAt || null,
+      hashtags: video.hashtags || null
+    };
     this.videos.set(id, newVideo);
     return newVideo;
   }
@@ -177,7 +197,15 @@ export class MemStorage implements IStorage {
   
   async createContentTemplate(template: InsertContentTemplate): Promise<ContentTemplate> {
     const id = this.currentTemplateId++;
-    const newTemplate: ContentTemplate = { ...template, id };
+    // Ensure all optional fields have proper null values
+    const newTemplate: ContentTemplate = { 
+      ...template, 
+      id,
+      thumbnailUrl: template.thumbnailUrl || null,
+      avgViews: template.avgViews || null,
+      popularity: template.popularity || null,
+      isNew: template.isNew || null
+    };
     this.contentTemplates.set(id, newTemplate);
     return newTemplate;
   }
@@ -195,7 +223,13 @@ export class MemStorage implements IStorage {
   
   async createScheduledPost(post: InsertScheduledPost): Promise<ScheduledPost> {
     const id = this.currentPostId++;
-    const newPost: ScheduledPost = { ...post, id };
+    // Ensure all optional fields have proper null values
+    const newPost: ScheduledPost = { 
+      ...post, 
+      id,
+      thumbnailUrl: post.thumbnailUrl || null,
+      platforms: post.platforms || null
+    };
     this.scheduledPosts.set(id, newPost);
     return newPost;
   }
@@ -213,7 +247,14 @@ export class MemStorage implements IStorage {
   
   async createComment(comment: InsertComment): Promise<Comment> {
     const id = this.currentCommentId++;
-    const newComment: Comment = { ...comment, id };
+    // Ensure all optional fields have proper null values
+    const newComment: Comment = { 
+      ...comment, 
+      id,
+      likes: comment.likes || null,
+      avatarUrl: comment.avatarUrl || null,
+      timestamp: comment.timestamp || null
+    };
     this.comments.set(id, newComment);
     return newComment;
   }
@@ -233,6 +274,7 @@ export class MemStorage implements IStorage {
     return Array.from(this.revenues.values()).filter(
       (revenue) => 
         revenue.userId === userId && 
+        revenue.date != null && 
         revenue.date >= startDate && 
         revenue.date <= endDate
     );
@@ -240,7 +282,12 @@ export class MemStorage implements IStorage {
   
   async createRevenue(revData: InsertRevenue): Promise<Revenue> {
     const id = this.currentRevenueId++;
-    const newRevenue: Revenue = { ...revData, id };
+    // Ensure date has proper null value if not provided
+    const newRevenue: Revenue = { 
+      ...revData, 
+      id,
+      date: revData.date || null
+    };
     this.revenues.set(id, newRevenue);
     return newRevenue;
   }
@@ -257,15 +304,30 @@ export class MemStorage implements IStorage {
     
     if (userAnalytics.length === 0) return undefined;
     
-    // Return the latest analytics entry
-    return userAnalytics.reduce((latest, current) => 
-      latest.date > current.date ? latest : current
-    );
+    // Return the latest analytics entry, checking for null dates
+    return userAnalytics.reduce((latest, current) => {
+      if (!latest.date) return current;
+      if (!current.date) return latest;
+      return latest.date > current.date ? latest : current;
+    });
   }
   
   async createAnalytics(analyticsData: InsertAnalytics): Promise<Analytics> {
     const id = this.currentAnalyticsId++;
-    const newAnalytics: Analytics = { ...analyticsData, id };
+    // Ensure all optional fields have proper null values
+    const newAnalytics: Analytics = { 
+      ...analyticsData, 
+      id,
+      date: analyticsData.date || null,
+      totalViews: analyticsData.totalViews || null,
+      followers: analyticsData.followers || null,
+      engagement: analyticsData.engagement || null,
+      estimatedRevenue: analyticsData.estimatedRevenue || null,
+      avgWatchTime: analyticsData.avgWatchTime || null,
+      commentsPerView: analyticsData.commentsPerView || null,
+      sharesPerView: analyticsData.sharesPerView || null,
+      dailyMetrics: analyticsData.dailyMetrics || {}
+    };
     this.analytics.set(id, newAnalytics);
     return newAnalytics;
   }
@@ -292,7 +354,17 @@ export class MemStorage implements IStorage {
   
   async createContentIdea(idea: InsertContentIdea): Promise<ContentIdea> {
     const id = this.currentContentIdeaId++;
-    const newIdea: ContentIdea = { ...idea, id };
+    // Ensure all optional fields have proper null values
+    const newIdea: ContentIdea = { 
+      ...idea, 
+      id,
+      createdAt: idea.createdAt || null,
+      niche: idea.niche || null,
+      prompt: idea.prompt || null,
+      aiGenerated: idea.aiGenerated || null,
+      favorite: idea.favorite || null,
+      tags: idea.tags || null
+    };
     this.contentIdeas.set(id, newIdea);
     return newIdea;
   }
@@ -325,7 +397,15 @@ export class MemStorage implements IStorage {
   
   async createContentDraft(draft: InsertContentDraft): Promise<ContentDraft> {
     const id = this.currentContentDraftId++;
-    const newDraft: ContentDraft = { ...draft, id };
+    // Ensure all optional fields have proper null values
+    const newDraft: ContentDraft = { 
+      ...draft, 
+      id,
+      status: draft.status || null,
+      createdAt: draft.createdAt || null,
+      ideaId: draft.ideaId || null,
+      updatedAt: draft.updatedAt || null
+    };
     this.contentDrafts.set(id, newDraft);
     return newDraft;
   }
@@ -358,7 +438,17 @@ export class MemStorage implements IStorage {
   
   async createMediaFile(file: InsertMediaFile): Promise<MediaFile> {
     const id = this.currentMediaFileId++;
-    const newFile: MediaFile = { ...file, id };
+    // Ensure all optional fields have proper null values
+    const newFile: MediaFile = { 
+      ...file, 
+      id,
+      thumbnailUrl: file.thumbnailUrl || null,
+      duration: file.duration || null,
+      width: file.width || null,
+      height: file.height || null,
+      uploadedAt: file.uploadedAt || null,
+      draftId: file.draftId || null
+    };
     this.mediaFiles.set(id, newFile);
     return newFile;
   }
@@ -634,6 +724,7 @@ export class MemStorage implements IStorage {
       fileSize: 1240000,
       fileUrl: "https://example.com/media/tiktok_features_thumbnail.jpg",
       thumbnailUrl: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&h=200&q=80",
+      duration: null, // null for image files
       width: 1080,
       height: 1920,
       uploadedAt: new Date(Date.now() - 12 * 60 * 60 * 1000)
