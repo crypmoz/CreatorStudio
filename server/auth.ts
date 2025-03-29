@@ -6,9 +6,6 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User } from "@shared/schema";
-import createMemoryStore from "memorystore";
-
-const MemoryStore = createMemoryStore(session);
 
 // Extend Express User interface with our user properties
 declare global {
@@ -52,9 +49,7 @@ export function setupAuth(app: Express) {
       secure: process.env.NODE_ENV === 'production',
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     },
-    store: new MemoryStore({
-      checkPeriod: 86400000 // prune expired entries every 24h
-    })
+    store: storage.sessionStore // Use the session store from storage
   };
 
   app.use(session(sessionSettings));

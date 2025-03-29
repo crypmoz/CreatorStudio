@@ -11,7 +11,15 @@ import {
   MediaFile, InsertMediaFile
 } from "@shared/schema";
 
+import session from "express-session";
+import createMemoryStore from "memorystore";
+
+const MemoryStore = createMemoryStore(session);
+
 export interface IStorage {
+  // Session Store
+  sessionStore: session.Store;
+  
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -97,6 +105,9 @@ export class MemStorage implements IStorage {
   private currentContentIdeaId: number;
   private currentContentDraftId: number;
   private currentMediaFileId: number;
+  
+  // Session store for authentication
+  public sessionStore: session.Store;
 
   constructor() {
     this.users = new Map();
@@ -120,6 +131,11 @@ export class MemStorage implements IStorage {
     this.currentContentIdeaId = 1;
     this.currentContentDraftId = 1;
     this.currentMediaFileId = 1;
+    
+    // Initialize session store with memory store
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    });
     
     // Initialize with some demo data
     this.initializeDemoData();
@@ -574,11 +590,11 @@ export class MemStorage implements IStorage {
   
   // Initialize with demo data
   private initializeDemoData() {
-    // Create a demo user
+    // Create a demo user with hashed password ("password" hashed using scrypt)
     const user: User = {
       id: this.currentUserId++,
       username: "demo",
-      password: "password",
+      password: "7e37f68170e6ae7080c28a07686bea57cc9e8e5052d887a282d2b3985718e473fa40f0faf31f14899df2fdf7e949b56d2bc498814922745d1d85ec718993371f.9dfc3597c8c9d751f50b75b9962abd75",
       email: "demo@example.com",
       displayName: "Sarah Johnson",
       profileImageUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",

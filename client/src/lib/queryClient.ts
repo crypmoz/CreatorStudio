@@ -18,7 +18,7 @@ export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
-): Promise<Response> {
+): Promise<any> {
   const headers: HeadersInit = {
     ...(data ? { "Content-Type": "application/json" } : {})
   };
@@ -31,7 +31,14 @@ export async function apiRequest(
   });
 
   await throwIfResNotOk(res);
-  return res;
+  
+  // For requests that don't return content (e.g., DELETE)
+  if (res.status === 204 || res.headers.get('content-length') === '0') {
+    return null;
+  }
+  
+  // Parse the JSON response
+  return await res.json();
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
