@@ -34,10 +34,24 @@ async function hashPassword(password: string) {
 }
 
 async function comparePasswords(supplied: string, stored: string) {
+  // Handle case where stored password doesn't have the expected format
+  if (!stored || !stored.includes(".")) {
+    return false;
+  }
+  
   const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  if (!hashed || !salt) {
+    return false;
+  }
+  
+  try {
+    const hashedBuf = Buffer.from(hashed, "hex");
+    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+    return timingSafeEqual(hashedBuf, suppliedBuf);
+  } catch (error) {
+    console.error("Error comparing passwords:", error);
+    return false;
+  }
 }
 
 export function setupAuth(app: Express) {
@@ -59,22 +73,49 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
-        // Special case for demo user - allow direct login with password123
-        if (username === "demo" && password === "password123") {
-          const demoUser = await storage.getUserByUsername("demo");
-          if (demoUser) {
-            return done(null, demoUser);
+        // Special case for demo user - allow login with various demo credentials
+        if (username.toLowerCase() === "demo") {
+          // Accept any of these common demo passwords
+          if (password === "demo123" || password === "password123" || password === "demo") {
+            const demoUser = await storage.getUserByUsername("demo");
+            if (demoUser) {
+              return done(null, demoUser);
+            }
+            
+            // If no demo user exists, create one
+            const newDemoUser = await storage.createUser({
+              username: "demo",
+              email: "demo@example.com",
+              password: await hashPassword("demo123"),
+              displayName: "Demo User",
+              role: "creator",
+              bio: "This is a demo account for testing purposes",
+              profileImageUrl: null
+            });
+            
+            return done(null, newDemoUser);
           }
         }
         
         // Normal authentication flow for other users
         const user = await storage.getUserByUsername(username);
-        if (!user || !(await comparePasswords(password, user.password))) {
+        if (!user) {
           return done(null, false, { message: "Invalid username or password" });
-        } else {
-          return done(null, user);
+        }
+        
+        // Verify password
+        try {
+          if (await comparePasswords(password, user.password)) {
+            return done(null, user);
+          } else {
+            return done(null, false, { message: "Invalid username or password" });
+          }
+        } catch (error) {
+          console.error("Password verification error:", error);
+          return done(null, false, { message: "Authentication error" });
         }
       } catch (err) {
+        console.error("Authentication error:", err);
         return done(err);
       }
     })
