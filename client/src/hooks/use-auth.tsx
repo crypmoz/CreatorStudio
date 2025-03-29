@@ -39,12 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Login failed");
-      }
-      return await res.json();
+      // The apiRequest function already handles error checking and JSON parsing
+      return await apiRequest("POST", "/api/login", credentials);
     },
     onSuccess: (user: User) => {
       queryClient.setQueryData(['/api/user'], user);
@@ -52,18 +48,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Login successful",
         description: `Welcome back, ${user.displayName || user.username}!`,
       });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Login failed",
+        description: error.message || "Could not sign in. Please check your credentials.",
+        variant: "destructive",
+      });
     }
   });
 
   // Register mutation
   const registerMutation = useMutation({
     mutationFn: async (userData: InsertUser) => {
-      const res = await apiRequest("POST", "/api/register", userData);
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Registration failed");
-      }
-      return await res.json();
+      // The apiRequest function already handles error checking and JSON parsing
+      return await apiRequest("POST", "/api/register", userData);
     },
     onSuccess: (user: User) => {
       queryClient.setQueryData(['/api/user'], user);
@@ -71,17 +70,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Registration successful",
         description: `Welcome to CreatorAIDE, ${user.displayName || user.username}!`,
       });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Registration failed",
+        description: error.message || "Could not create account. Please try again.",
+        variant: "destructive",
+      });
     }
   });
 
   // Logout mutation
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/logout");
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Logout failed");
-      }
+      // The apiRequest function already handles error checking
+      await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
       queryClient.setQueryData(['/api/user'], null);
@@ -90,6 +93,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast({
         title: "Logged out successfully",
         description: "You've been logged out of your account",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Logout failed",
+        description: error.message || "Could not log out. Please try again.",
+        variant: "destructive",
       });
     }
   });
