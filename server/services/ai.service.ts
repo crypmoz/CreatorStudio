@@ -1,537 +1,315 @@
-import { config, OPENAI_API_KEY, DEEPSEEK_API_KEY } from '../config/env';
-import { ContentIdea, ContentDraft } from '@shared/schema';
+import { OpenAI } from 'openai';
+import { OPENAI_API_KEY, DEEPSEEK_API_KEY } from '../config/env';
 
-/**
- * Service for AI operations using DeepSeek API
- */
-export class AIService {
-  private apiKey: string;
-  private baseUrl: string;
-  private useDeepSeek: boolean;
+// Initialize the OpenAI client if API key is available
+let openai: OpenAI | null = null;
+if (OPENAI_API_KEY) {
+  openai = new OpenAI({
+    apiKey: OPENAI_API_KEY,
+  });
+}
 
-  constructor() {
-    // Prioritize DeepSeek API if available, fallback to OpenAI if not
-    if (config.api.deepseek || DEEPSEEK_API_KEY) {
-      this.apiKey = config.api.deepseek || DEEPSEEK_API_KEY;
-      this.baseUrl = 'https://api.deepseek.com/v1';
-      this.useDeepSeek = true;
-    } else {
-      this.apiKey = config.api.openai || OPENAI_API_KEY;
-      this.baseUrl = 'https://api.openai.com/v1';
-      this.useDeepSeek = false;
-      console.warn('DeepSeek API key not found, falling back to OpenAI');
+// DeepSeek API implementation (simplified for now, would integrate with their SDK)
+const deepseekApi = {
+  available: !!DEEPSEEK_API_KEY,
+  async generateCompletion(prompt: string, options: any = {}) {
+    if (!DEEPSEEK_API_KEY) {
+      throw new Error('DeepSeek API key not configured');
     }
-  }
-
-  /**
-   * Generate content ideas based on user preferences and target audience
-   * @param topic The general topic for content ideas
-   * @param targetAudience Target audience details
-   * @param contentType Type of content (e.g., video, blog, etc.)
-   * @param count Number of ideas to generate
-   * @returns Array of content ideas
-   */
-  async generateContentIdeas(
-    topic: string,
-    targetAudience: string,
-    contentType: string = 'TikTok video',
-    count: number = 5
-  ): Promise<Partial<ContentIdea>[]> {
-    const prompt = `
-      Generate ${count} unique and engaging ${contentType} ideas about ${topic} for ${targetAudience}.
-      For each idea, provide:
-      1. A catchy title (max 60 characters)
-      2. A brief description (2-3 sentences)
-      3. Key points to cover (3-5 bullet points)
-      4. Potential hashtags (5-7 hashtags)
-      5. Estimated audience engagement score (1-10)
-      
-      Format the response as a JSON array where each object has properties:
-      - title: string
-      - description: string
-      - keyPoints: string[]
-      - hashtags: string[]
-      - estimatedEngagement: number
-    `;
-
+    
+    // Actual implementation would use DeepSeek's SDK or direct API calls
+    // This is a placeholder for demonstration
     try {
-      const response = await this.callOpenAIAPI(prompt);
-      let parsedResponse;
+      const response = await fetch('https://api.deepseek.com/v1/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          model: options.model || 'deepseek-chat',
+          max_tokens: options.maxTokens || 1000,
+          temperature: options.temperature || 0.7,
+        }),
+      });
       
-      try {
-        // Try to extract JSON from the response
-        const jsonMatch = response.match(/\\[\\s*\\n*{[\\s\\S]*}\\s*\\n*\\]/);
-        if (jsonMatch) {
-          parsedResponse = JSON.parse(jsonMatch[0]);
-        } else {
-          // If no JSON array found, try to parse the entire response
-          parsedResponse = JSON.parse(response);
-        }
-      } catch (e) {
-        console.error(`Failed to parse ${this.useDeepSeek ? 'DeepSeek' : 'OpenAI'} API response as JSON:`, e);
-        // Create a structured response from unstructured text as fallback
-        parsedResponse = this.extractIdeasFromText(response, count);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to generate completion with DeepSeek');
       }
-
-      // Map the response to ContentIdea format
-      return parsedResponse.map((idea: any) => ({
-        title: idea.title,
-        description: idea.description,
-        keyPoints: idea.keyPoints.join('\\n'),
-        hashtags: idea.hashtags.join(' '),
-        estimatedEngagement: idea.estimatedEngagement,
-        status: 'draft',
-      }));
-    } catch (error: any) {
-      console.error('Error generating content ideas:', error);
-      throw new Error(`Failed to generate content ideas: ${error.message}`);
+      
+      return await response.json();
+    } catch (error) {
+      console.error('DeepSeek API error:', error);
+      throw error;
     }
   }
+};
 
+// Class to handle AI operations with provider fallback support
+export class AIService {
+  private openai: OpenAI | null;
+  private deepseekAvailable: boolean;
+  
+  constructor() {
+    this.openai = openai;
+    this.deepseekAvailable = deepseekApi.available;
+    
+    // Log configuration status
+    if (!this.openai && !this.deepseekAvailable) {
+      console.warn('No AI providers configured. Set OPENAI_API_KEY or DEEPSEEK_API_KEY to enable AI features.');
+    } else if (this.deepseekAvailable) {
+      console.log('DeepSeek AI provider configured.');
+      if (!this.openai) {
+        console.log('OpenAI provider not available, using DeepSeek exclusively.');
+      } else {
+        console.log('OpenAI provider available as fallback.');
+      }
+    } else if (this.openai) {
+      console.log('OpenAI provider configured.');
+      console.log('DeepSeek API key not found, falling back to OpenAI');
+    }
+  }
+  
   /**
-   * Generate a content draft based on a content idea
-   * @param idea The content idea to generate a draft for
-   * @returns A content draft
+   * Generate content ideas based on topic and audience
    */
-  async generateContentDraft(idea: ContentIdea): Promise<Partial<ContentDraft>> {
-    const prompt = `
-      Create a detailed script for a ${idea.platform || 'TikTok'} video based on the following idea:
+  async generateContentIdeas(topic: string, targetAudience: string, contentType: string = 'TikTok video', count: number = 3) {
+    const prompt = `Generate ${count} creative content ideas for ${contentType} about "${topic}" 
+      targeting ${targetAudience}. For each idea, provide:
+      1. A catchy title (35 characters max)
+      2. A brief description (120 characters max)
+      3. 3-5 key points to cover
+      4. 5 relevant hashtags
+      5. Estimated engagement potential (high/medium/low)
       
+      Focus on engaging, trending formats that work well on TikTok.
+      Format as a JSON array.`;
+    
+    try {
+      // Try DeepSeek first if available
+      if (this.deepseekAvailable) {
+        try {
+          const response = await deepseekApi.generateCompletion(prompt, {
+            temperature: 0.8,
+            maxTokens: 2000,
+          });
+          
+          return this.parseGeneratedContent(response.choices[0].text, 'ideas');
+        } catch (error) {
+          console.warn('DeepSeek API error, falling back to OpenAI:', error);
+          // Fall back to OpenAI if DeepSeek fails
+          if (!this.openai) throw error;
+        }
+      }
+      
+      // Use OpenAI if DeepSeek is not available or failed
+      if (this.openai) {
+        const response = await this.openai.chat.completions.create({
+          model: 'gpt-4',
+          messages: [
+            { role: 'system', content: 'You are a TikTok content strategy expert who helps creators plan viral content.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.8,
+          max_tokens: 2000,
+        });
+        
+        return this.parseGeneratedContent(response.choices[0].message.content || '', 'ideas');
+      }
+      
+      throw new Error('No AI provider available');
+    } catch (error) {
+      console.error('Error generating content ideas:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Generate a content draft from an idea
+   */
+  async generateContentDraft(idea: any) {
+    const prompt = `Create a detailed TikTok video script based on this content idea:
       Title: ${idea.title}
       Description: ${idea.description}
-      Key Points: ${idea.keyPoints}
-      Hashtags: ${idea.hashtags}
+      Key points: ${idea.keyPoints || idea.key_points || ''}
+      Target audience: ${idea.targetAudience || idea.niche || 'TikTok users'}
       
-      Generate a script with the following:
+      Create a complete script with:
       1. An attention-grabbing hook (first 3 seconds)
-      2. Content structure with timing (e.g., 0:00-0:10 - Introduction)
-      3. Full script with dialogue and action cues
-      4. Background music or sound effect suggestions
-      5. Visual transition recommendations
-      6. Call to action at the end
+      2. Main content structure with timing
+      3. Call to action
+      4. Music/sound suggestions
+      5. Visual elements and effects
       
-      Format as a JSON object with:
-      - hook: string
-      - structure: array of {time: string, section: string}
-      - script: string (full script)
-      - audioSuggestions: string[]
-      - visualEffects: string[]
-      - callToAction: string
-    `;
-
+      Format the script in a way that's easy to follow while filming.`;
+    
     try {
-      const response = await this.callOpenAIAPI(prompt);
-      let parsedResponse;
-      
-      try {
-        // Try to extract JSON from the response
-        const jsonMatch = response.match(/{[\s\S]*}/);
-        if (jsonMatch) {
-          parsedResponse = JSON.parse(jsonMatch[0]);
-        } else {
-          // If no JSON object found, try to parse the entire response
-          parsedResponse = JSON.parse(response);
+      // Try DeepSeek first if available
+      if (this.deepseekAvailable) {
+        try {
+          const response = await deepseekApi.generateCompletion(prompt, {
+            temperature: 0.7,
+            maxTokens: 2500,
+          });
+          
+          return this.parseGeneratedContent(response.choices[0].text, 'draft');
+        } catch (error) {
+          console.warn('DeepSeek API error, falling back to OpenAI:', error);
+          // Fall back to OpenAI if DeepSeek fails
+          if (!this.openai) throw error;
         }
-      } catch (e) {
-        console.error(`Failed to parse ${this.useDeepSeek ? 'DeepSeek' : 'OpenAI'} API response as JSON:`, e);
-        // Create a structured response from unstructured text as fallback
-        parsedResponse = this.extractDraftFromText(response);
       }
-
-      // Extract the script components
-      return {
-        ideaId: idea.id,
-        title: idea.title,
-        content: parsedResponse.script,
-        hook: parsedResponse.hook,
-        structure: JSON.stringify(parsedResponse.structure),
-        audioSuggestions: parsedResponse.audioSuggestions.join('\\n'),
-        visualEffects: parsedResponse.visualEffects.join('\\n'),
-        callToAction: parsedResponse.callToAction,
-        status: 'draft',
-      };
-    } catch (error: any) {
+      
+      // Use OpenAI if DeepSeek is not available or failed
+      if (this.openai) {
+        const response = await this.openai.chat.completions.create({
+          model: 'gpt-4',
+          messages: [
+            { role: 'system', content: 'You are a TikTok content creation assistant who excels at writing engaging video scripts.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 2500,
+        });
+        
+        return this.parseGeneratedContent(response.choices[0].message.content || '', 'draft');
+      }
+      
+      throw new Error('No AI provider available');
+    } catch (error) {
       console.error('Error generating content draft:', error);
-      throw new Error(`Failed to generate content draft: ${error.message}`);
+      throw error;
     }
   }
-
+  
   /**
-   * Generate image prompts for content based on the draft
-   * @param draft The content draft to generate image prompts for
-   * @returns Array of image prompt suggestions
+   * Generate image prompts based on content draft
    */
-  async generateImagePrompts(draft: ContentDraft): Promise<string[]> {
-    const prompt = `
-      Based on the following content draft for a ${draft.platform || 'TikTok'} video, 
-      generate 5 detailed image generation prompts that would create visually appealing 
-      graphics to accompany this content.
+  async generateImagePrompts(draft: any) {
+    const prompt = `Based on this TikTok video script:
+      "${draft.title}: ${draft.content.substring(0, 300)}..."
       
-      Content Title: ${draft.title}
-      Content: ${draft.content}
-      
-      For each image prompt:
-      1. Describe the subject matter clearly
-      2. Specify visual style (e.g., minimalist, vibrant, photorealistic)
-      3. Mention color scheme and mood
-      4. Add technical details (e.g., lighting, perspective)
-      
-      Format the response as a JSON array of strings.
-    `;
-
+      Generate 5 detailed image generation prompts that would create visuals to support this content.
+      Each prompt should be specific, detailed, and ready to use with image generation AI.
+      Format as a JSON array of strings.`;
+    
     try {
-      const response = await this.callOpenAIAPI(prompt);
-      let parsedResponse;
-      
-      try {
-        // Try to extract JSON from the response
-        const jsonMatch = response.match(/\\[[\s\S]*\\]/);
-        if (jsonMatch) {
-          parsedResponse = JSON.parse(jsonMatch[0]);
-        } else {
-          // If no JSON array found, try to parse the entire response
-          parsedResponse = JSON.parse(response);
+      // Try DeepSeek first if available
+      if (this.deepseekAvailable) {
+        try {
+          const response = await deepseekApi.generateCompletion(prompt, {
+            temperature: 0.8,
+            maxTokens: 1500,
+          });
+          
+          return this.parseGeneratedContent(response.choices[0].text, 'imagePrompts');
+        } catch (error) {
+          console.warn('DeepSeek API error, falling back to OpenAI:', error);
+          // Fall back to OpenAI if DeepSeek fails
+          if (!this.openai) throw error;
         }
-      } catch (e) {
-        console.error(`Failed to parse ${this.useDeepSeek ? 'DeepSeek' : 'OpenAI'} API response as JSON:`, e);
-        // Extract prompts from text as fallback
-        parsedResponse = response
-          .split(/\\d+\\./)
-          .filter(prompt => prompt.trim().length > 0)
-          .map(prompt => prompt.trim());
       }
-
-      return parsedResponse;
-    } catch (error: any) {
+      
+      // Use OpenAI if DeepSeek is not available or failed
+      if (this.openai) {
+        const response = await this.openai.chat.completions.create({
+          model: 'gpt-4',
+          messages: [
+            { role: 'system', content: 'You are an AI image prompt engineering expert.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.8,
+          max_tokens: 1500,
+        });
+        
+        return this.parseGeneratedContent(response.choices[0].message.content || '', 'imagePrompts');
+      }
+      
+      throw new Error('No AI provider available');
+    } catch (error) {
       console.error('Error generating image prompts:', error);
-      throw new Error(`Failed to generate image prompts: ${error.message}`);
+      throw error;
     }
   }
-
+  
   /**
-   * Analyze a video for potential virality and engagement
-   * @param metadata Video metadata to analyze
-   * @returns Analysis with scores and recommendations
+   * Helper method to parse AI-generated content
    */
-  async analyzeVideoVirality(metadata: {
-    title: string;
-    description: string;
-    hashtags: string;
-    duration: number;
-    category: string;
-  }): Promise<{
-    viralityScore: number;
-    engagement: number;
-    strengths: string[];
-    weaknesses: string[];
-    recommendations: string[];
-  }> {
-    const prompt = `
-      Analyze the following TikTok video metadata for virality potential:
-      
-      Title: ${metadata.title}
-      Description: ${metadata.description}
-      Hashtags: ${metadata.hashtags}
-      Duration: ${metadata.duration} seconds
-      Category: ${metadata.category}
-      
-      Provide a comprehensive analysis including:
-      1. Virality Score (1-100)
-      2. Estimated Engagement Rate (%)
-      3. Content Strengths (3-5 points)
-      4. Content Weaknesses (3-5 points)
-      5. Recommendations for Improvement (3-5 points)
-      
-      Format the response as a JSON object with:
-      - viralityScore: number
-      - engagement: number
-      - strengths: string[]
-      - weaknesses: string[]
-      - recommendations: string[]
-    `;
-
+  private parseGeneratedContent(content: string, type: 'ideas' | 'draft' | 'imagePrompts') {
     try {
-      const response = await this.callOpenAIAPI(prompt);
-      let parsedResponse;
+      // Try to extract JSON from the response if it's wrapped in markdown or other text
+      const jsonPattern = /```(?:json)?\s*(\[[\s\S]*?\]|\{[\s\S]*?\})\s*```/;
+      const jsonMatch = content.match(jsonPattern);
+      if (jsonMatch && jsonMatch[1]) {
+        content = jsonMatch[1];
+      }
       
-      try {
-        // Try to extract JSON from the response
-        const jsonMatch = response.match(/{[\s\S]*}/);
-        if (jsonMatch) {
-          parsedResponse = JSON.parse(jsonMatch[0]);
-        } else {
-          // If no JSON object found, try to parse the entire response
-          parsedResponse = JSON.parse(response);
+      // Clean up the content for parsing
+      content = content.trim();
+      
+      // For ideas and image prompts, expect a JSON array
+      if (type === 'ideas' || type === 'imagePrompts') {
+        if (!content.startsWith('[')) {
+          // If not properly formatted, try to find an array within the text
+          const arrayPattern = /\[\s*\{[\s\S]*\}\s*\]/;
+          const possibleArray = content.match(arrayPattern);
+          if (possibleArray) {
+            content = possibleArray[0];
+          } else {
+            // If we still can't find an array, make our best guess
+            content = `[${content}]`;
+          }
         }
-      } catch (e) {
-        console.error(`Failed to parse ${this.useDeepSeek ? 'DeepSeek' : 'OpenAI'} API response as JSON:`, e);
-        // Create a structured analysis from unstructured text
-        parsedResponse = {
-          viralityScore: 50,
-          engagement: 5,
-          strengths: ['Could not parse strengths'],
-          weaknesses: ['Could not parse weaknesses'],
-          recommendations: ['Could not parse recommendations'],
+        
+        return JSON.parse(content);
+      }
+      
+      // For draft, we expect a more freeform text that needs to be structured
+      if (type === 'draft') {
+        // Try to extract sections
+        const hookPattern = /hook:?\s*(.*?)(?=\n\n|$)/i;
+        const structurePattern = /structure:?\s*([\s\S]*?)(?=\n\n(?:call to action:|$)|$)/i;
+        const ctaPattern = /call to action:?\s*(.*?)(?=\n\n|$)/i;
+        
+        const hookMatch = content.match(hookPattern);
+        const structureMatch = content.match(structurePattern);
+        const ctaMatch = content.match(ctaPattern);
+        
+        return {
+          hook: hookMatch ? hookMatch[1].trim() : '',
+          structure: structureMatch ? structureMatch[1].trim() : content,
+          callToAction: ctaMatch ? ctaMatch[1].trim() : '',
+          content: content
         };
       }
-
-      return parsedResponse;
-    } catch (error: any) {
-      console.error('Error analyzing video virality:', error);
-      throw new Error(`Failed to analyze video virality: ${error.message}`);
+      
+      return content;
+    } catch (error) {
+      console.error(`Error parsing ${type} from AI response:`, error);
+      // Return the raw content if parsing fails
+      return type === 'imagePrompts' ? [] : content;
     }
   }
-
+  
   /**
-   * Private method to call the AI API (DeepSeek or OpenAI)
-   * @param prompt The prompt to send to the API
-   * @returns The API response text
+   * Check if any AI provider is available
    */
-  private async callOpenAIAPI(prompt: string): Promise<string> {
-    try {
-      if (this.useDeepSeek) {
-        return await this.callDeepSeekAPI(prompt);
-      } else {
-        return await this.callActualOpenAIAPI(prompt);
-      }
-    } catch (error: any) {
-      console.error(`Error calling ${this.useDeepSeek ? 'DeepSeek' : 'OpenAI'} API:`, error);
-      throw new Error(`Failed to get response from ${this.useDeepSeek ? 'DeepSeek' : 'OpenAI'} API: ${error.message}`);
-    }
+  isAvailable() {
+    return !!(this.openai || this.deepseekAvailable);
   }
-
+  
   /**
-   * Call the DeepSeek API
-   * @param prompt The prompt to send to the API
-   * @returns The API response text
+   * Get the available providers
    */
-  private async callDeepSeekAPI(prompt: string): Promise<string> {
-    try {
-      // Call DeepSeek API
-      const response = await fetch(`${this.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'deepseek-chat',
-          messages: [
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          temperature: 0.7,
-          max_tokens: 2000,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`DeepSeek API error: ${response.status} ${error}`);
-      }
-
-      const data = await response.json();
-      return data.choices[0].message.content;
-    } catch (error: any) {
-      console.error('Error calling DeepSeek API:', error);
-      throw new Error(`DeepSeek API error: ${error.message}`);
-    }
-  }
-
-  /**
-   * Call the OpenAI API
-   * @param prompt The prompt to send to the API
-   * @returns The API response text
-   */
-  private async callActualOpenAIAPI(prompt: string): Promise<string> {
-    try {
-      // Call OpenAI API
-      const response = await fetch(`${this.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          temperature: 0.7,
-          max_tokens: 2000,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`OpenAI API error: ${response.status} ${error}`);
-      }
-
-      const data = await response.json();
-      return data.choices[0].message.content;
-    } catch (error: any) {
-      console.error('Error calling OpenAI API:', error);
-      throw new Error(`OpenAI API error: ${error.message}`);
-    }
-  }
-
-  /**
-   * Extract content ideas from unstructured text response
-   * @param text The text to extract ideas from
-   * @param count Number of ideas expected
-   * @returns Structured content ideas
-   */
-  private extractIdeasFromText(text: string, count: number): any[] {
-    const ideas = [];
-    
-    // Simple pattern matching to find ideas in the text
-    const ideaSections = text.split(/Idea \d+:|#\d+:/);
-    
-    for (let i = 1; i <= count && i < ideaSections.length; i++) {
-      const section = ideaSections[i];
-      
-      // Extract title (first line or sentence)
-      const titleMatch = section.match(/Title:?\s*([^\\n.]+)/i) || 
-                         section.match(/^\\s*([^\\n.]+)/);
-      const title = titleMatch ? titleMatch[1].trim() : `Content Idea ${i}`;
-      
-      // Extract description
-      const descMatch = section.match(/Description:?\s*([^\\n]+)/i) || 
-                        section.match(/^\\s*[^\\n.]+\\s*[.\\n]\\s*([^\\n]+)/);
-      const description = descMatch ? descMatch[1].trim() : '';
-      
-      // Extract key points
-      const keyPointsMatch = section.match(/Key Points:?\\s*([\\s\\S]*?)(?=Hashtags:|Estimated|$)/i);
-      let keyPoints: string[] = [];
-      if (keyPointsMatch) {
-        keyPoints = keyPointsMatch[1]
-          .split(/\\*|-|\\d+\\./)
-          .map(point => point.trim())
-          .filter(point => point.length > 0);
-      }
-      
-      // Extract hashtags
-      const hashtagsMatch = section.match(/Hashtags:?\\s*([\\s\\S]*?)(?=Estimated|$)/i);
-      let hashtags: string[] = [];
-      if (hashtagsMatch) {
-        hashtags = hashtagsMatch[1]
-          .split(/\\s+/)
-          .map(tag => tag.trim())
-          .filter(tag => tag.startsWith('#') || (tag = `#${tag}`));
-      }
-      
-      // Extract estimated engagement
-      const engagementMatch = section.match(/Estimated\\s*Engagement:?\\s*(\\d+)/i) ||
-                              section.match(/Score:?\\s*(\\d+)/i);
-      const estimatedEngagement = engagementMatch ? parseInt(engagementMatch[1], 10) : 5;
-      
-      ideas.push({
-        title,
-        description,
-        keyPoints: keyPoints.length > 0 ? keyPoints : ['Point 1', 'Point 2', 'Point 3'],
-        hashtags: hashtags.length > 0 ? hashtags : ['#tiktok', '#trending', '#content'],
-        estimatedEngagement,
-      });
-    }
-    
-    // If we couldn't extract enough ideas, pad with defaults
-    while (ideas.length < count) {
-      ideas.push({
-        title: `Content Idea ${ideas.length + 1}`,
-        description: 'An engaging content idea for your audience.',
-        keyPoints: ['Point 1', 'Point 2', 'Point 3'],
-        hashtags: ['#tiktok', '#trending', '#content'],
-        estimatedEngagement: 5,
-      });
-    }
-    
-    return ideas;
-  }
-
-  /**
-   * Extract content draft from unstructured text response
-   * @param text The text to extract draft from
-   * @returns Structured content draft
-   */
-  private extractDraftFromText(text: string): any {
-    // Extract hook (first few lines or content after "Hook:" label)
-    const hookMatch = text.match(/Hook:?\\s*([^\\n]+)/i) || 
-                     text.match(/^\\s*([^\\n.]+)/);
-    const hook = hookMatch ? hookMatch[1].trim() : 'Attention-grabbing opening hook';
-    
-    // Extract structure
-    const structureMatch = text.match(/Structure:?\\s*([\\s\\S]*?)(?=Script:|Full Script:|$)/i);
-    let structure: {time: string, section: string}[] = [];
-    
-    if (structureMatch) {
-      const structureText = structureMatch[1];
-      const timeSegments = structureText.match(/(\\d+:\\d+(?:-\\d+:\\d+)?)[\\s-]*(.*?)(?=\\d+:\\d+|$)/g);
-      
-      if (timeSegments) {
-        structure = timeSegments.map(segment => {
-          const [time, section] = segment.split(/\\s*-\\s*/);
-          return { 
-            time: time.trim(), 
-            section: section?.trim() || 'Content section' 
-          };
-        });
-      }
-    }
-    
-    // If no structure was found, create a default one
-    if (structure.length === 0) {
-      structure = [
-        { time: '0:00-0:10', section: 'Introduction/Hook' },
-        { time: '0:10-0:30', section: 'Main Content' },
-        { time: '0:30-0:50', section: 'Details/Examples' },
-        { time: '0:50-1:00', section: 'Conclusion/Call to Action' }
-      ];
-    }
-    
-    // Extract script
-    const scriptMatch = text.match(/(?:Script|Full Script):?\\s*([\\s\\S]*?)(?=Audio|Visual|Call to Action:|$)/i);
-    const script = scriptMatch ? scriptMatch[1].trim() : text.trim();
-    
-    // Extract audio suggestions
-    const audioMatch = text.match(/Audio\\s*Suggestions:?\\s*([\\s\\S]*?)(?=Visual|Call to Action:|$)/i);
-    let audioSuggestions: string[] = [];
-    
-    if (audioMatch) {
-      audioSuggestions = audioMatch[1]
-        .split(/\\*|-|\\d+\\./)
-        .map(audio => audio.trim())
-        .filter(audio => audio.length > 0);
-    }
-    
-    // Extract visual effects
-    const visualMatch = text.match(/Visual\\s*(?:Effects|Transitions):?\\s*([\\s\\S]*?)(?=Call to Action:|$)/i);
-    let visualEffects: string[] = [];
-    
-    if (visualMatch) {
-      visualEffects = visualMatch[1]
-        .split(/\\*|-|\\d+\\./)
-        .map(effect => effect.trim())
-        .filter(effect => effect.length > 0);
-    }
-    
-    // Extract call to action
-    const ctaMatch = text.match(/Call\\s*to\\s*Action:?\\s*([\\s\\S]*?)(?=$)/i);
-    const callToAction = ctaMatch ? ctaMatch[1].trim() : 'Follow for more content like this!';
-    
-    return {
-      hook,
-      structure,
-      script,
-      audioSuggestions: audioSuggestions.length > 0 ? audioSuggestions : ['Upbeat background music', 'Sound effects for transitions'],
-      visualEffects: visualEffects.length > 0 ? visualEffects : ['Zoom transitions', 'Text overlays', 'Visual highlights'],
-      callToAction
-    };
+  getAvailableProviders() {
+    const providers = [];
+    if (this.deepseekAvailable) providers.push('deepseek');
+    if (this.openai) providers.push('openai');
+    return providers;
   }
 }
 
+// Export a singleton instance
 export const aiService = new AIService();

@@ -3,9 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
-import { OnboardingProvider } from "@/hooks/use-onboarding";
 import { ProtectedRoute } from "@/lib/protected-route";
-import { OnboardingTooltip } from "@/components/onboarding/OnboardingTooltip";
 import ErrorBoundary from "@/components/error/ErrorBoundary";
 import { SEOHead } from "@/components/seo/SEOHead";
 
@@ -79,13 +77,10 @@ function App() {
       <SEOHead />
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <OnboardingProvider>
-            <MainLayout>
-              <Router />
-            </MainLayout>
-            <OnboardingTooltip />
-            <Toaster />
-          </OnboardingProvider>
+          <MainLayout>
+            <Router />
+          </MainLayout>
+          <Toaster />
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>

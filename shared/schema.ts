@@ -65,12 +65,17 @@ export const videos = pgTable("videos", {
 // Content Template model
 export const contentTemplates = pgTable("content_templates", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
   title: text("title").notNull(),
   description: text("description").notNull(),
+  content: text("content").notNull(),
+  category: text("category").notNull(),
   thumbnailUrl: text("thumbnail_url"),
   avgViews: integer("avg_views").default(0),
   popularity: text("popularity").default("normal"),
   isNew: boolean("is_new").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Scheduled Post model

@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authService } from '../services/auth.service';
-import { isAuthenticated as authenticate } from '../middleware/auth.middleware';
+import { requireAuth as authenticate } from '../middleware/auth.middleware';
 import { insertUserSchema } from '@shared/schema';
 import { z } from 'zod';
 import { fromZodError } from 'zod-validation-error';

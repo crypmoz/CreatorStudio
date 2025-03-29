@@ -1,39 +1,71 @@
 import { Request, Response, NextFunction } from 'express';
-import { storage } from '../storage';
 
 /**
  * Middleware to check if user is authenticated
  */
-export function isAuthenticated(req: Request, res: Response, next: NextFunction) {
-  if (req.isAuthenticated()) {
-    return next();
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'You must be logged in to access this resource'
+    });
   }
-  res.status(401).json({ message: 'Unauthorized - Please login to access this resource' });
-}
-
-/**
- * Middleware to check if user has admin role
- */
-export function isAdmin(req: Request, res: Response, next: NextFunction) {
-  if (req.isAuthenticated() && req.user && req.user.role === 'admin') {
-    return next();
-  }
-  res.status(403).json({ message: 'Forbidden - Admin access required' });
-}
-
-/**
- * Add storage to request object
- */
-export function injectStorage(req: Request, _res: Response, next: NextFunction) {
-  req.storage = storage;
   next();
 }
 
-// Extend Express Request interface to include user and storage
+/**
+ * Middleware to verify user role
+ */
+export function requireRole(role: string) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'You must be logged in to access this resource'
+      });
+    }
+    
+    if (req.user?.role !== role) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: `You must have ${role} role to access this resource`
+      });
+    }
+    
+    next();
+  };
+}
+
+/**
+ * Middleware for handling demo users with special access
+ */
+export function isDemoUser(req: Request, res: Response, next: NextFunction) {
+  if (req.user && req.user.username.startsWith('demo_')) {
+    req.isDemoUser = true;
+  } else {
+    req.isDemoUser = false;
+  }
+  next();
+}
+
+/**
+ * Restrict certain operations for demo users
+ */
+export function preventDemoUserOperations(req: Request, res: Response, next: NextFunction) {
+  if (req.isDemoUser) {
+    return res.status(403).json({
+      error: 'Forbidden for demo users',
+      message: 'This operation is not available for demo users'
+    });
+  }
+  next();
+}
+
+// Add custom properties to the Express Request interface
 declare global {
   namespace Express {
     interface Request {
-      storage: typeof storage;
+      isDemoUser?: boolean;
     }
   }
 }

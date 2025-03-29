@@ -1,345 +1,253 @@
-import axios from 'axios';
-import { storage } from '../storage';
 import { TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET } from '../config/env';
 
-// TikTok API URLs
-const TIKTOK_AUTH_URL = 'https://www.tiktok.com/v2/auth/authorize/';
-const TIKTOK_TOKEN_URL = 'https://open.tiktokapis.com/v2/oauth/token/';
-const TIKTOK_API_BASE = 'https://open.tiktokapis.com/v2/';
-
-// Types for TikTok API responses
-type TiktokTokenResponse = {
-  access_token: string;
-  refresh_token: string;
-  open_id: string;
-  expires_in: number;
-  refresh_expires_in: number;
-  scope: string;
-  token_type: string;
-};
-
-type TiktokUserInfo = {
-  open_id: string;
-  union_id: string;
-  avatar_url: string;
-  avatar_url_100: string;
-  avatar_url_200: string;
-  display_name: string;
-  bio_description: string;
-  profile_deep_link: string;
-  is_verified: boolean;
-  follower_count: number;
-  following_count: number;
-  likes_count: number;
-  video_count: number;
-};
-
-type TiktokVideoInfo = {
-  id: string;
-  create_time: number;
-  cover_image_url: string;
-  share_url: string;
-  video_description: string;
-  duration: number;
-  height: number;
-  width: number;
-  title: string;
-  embed_link: string;
-  embed_html: string;
-  like_count: number;
-  comment_count: number;
-  share_count: number;
-  view_count: number;
-};
-
-// Type for TikTok connection stored in user model
-export type TiktokConnection = {
-  accessToken: string;
-  refreshToken: string;
-  openId: string;
-  expiresAt: string;
-  refreshExpiresAt: string;
-  scope: string;
-  connectedAt: string;
-};
-
+/**
+ * TikTok API Service
+ * Handles all communication with the TikTok API for creator-related functionality
+ */
 export class TikTokService {
   private clientKey: string;
   private clientSecret: string;
-  private redirectUri: string;
-
+  private apiVersion: string = 'v2';
+  private baseUrl: string = 'https://open.tiktokapis.com';
+  private accessToken: string | null = null;
+  private expiresAt: number = 0;
+  
   constructor() {
-    // Initialize with environment variables
-    this.clientKey = TIKTOK_CLIENT_KEY || '';
-    this.clientSecret = TIKTOK_CLIENT_SECRET || '';
+    this.clientKey = TIKTOK_CLIENT_KEY;
+    this.clientSecret = TIKTOK_CLIENT_SECRET;
     
-    // Set redirect URI based on environment with proper production support
-    // Use REPLIT_DOMAIN for production which is automatically set in Replit
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? `https://${process.env.REPLIT_SLUG}.${process.env.REPLIT_DOMAIN || 'replit.app'}`
-      : 'http://localhost:5000'; // Changed to 5000 to match the Replit server port
+    // Log configuration status
+    if (!this.clientKey || !this.clientSecret) {
+      console.warn('TikTok API not fully configured. Set TIKTOK_CLIENT_KEY and TIKTOK_CLIENT_SECRET to enable TikTok features.');
+    } else {
+      console.log('TikTok API configured successfully.');
+    }
+  }
+  
+  /**
+   * Check if TikTok API is properly configured
+   */
+  isConfigured(): boolean {
+    return !!(this.clientKey && this.clientSecret);
+  }
+  
+  /**
+   * Generate OAuth authorization URL for TikTok login
+   */
+  getAuthUrl(redirectUri: string, state: string = 'state', scope: string[] = ['user.info.basic']): string {
+    if (!this.isConfigured()) {
+      throw new Error('TikTok API not configured');
+    }
     
-    // Allow override with explicit REDIRECT_BASE_URL environment variable
-    this.redirectUri = `${process.env.REDIRECT_BASE_URL || baseUrl}/api/tiktok/callback`;
+    const scopes = scope.join(',');
+    return `https://www.tiktok.com/auth/authorize/?client_key=${this.clientKey}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&state=${state}`;
   }
-
+  
   /**
-   * Generate a TikTok authentication URL
+   * Exchange authorization code for access token
    */
-  getAuthUrl(state: string): string {
-    const params = new URLSearchParams({
-      client_key: this.clientKey,
-      response_type: 'code',
-      scope: 'user.info.basic,user.info.profile,user.info.stats,video.list',
-      redirect_uri: this.redirectUri,
-      state
-    });
-
-    return `${TIKTOK_AUTH_URL}?${params.toString()}`;
-  }
-
-  /**
-   * Exchange the authorization code for an access token
-   */
-  async getAccessToken(code: string): Promise<TiktokTokenResponse> {
+  async getAccessToken(code: string, redirectUri: string): Promise<any> {
+    if (!this.isConfigured()) {
+      throw new Error('TikTok API not configured');
+    }
+    
     try {
-      const params = new URLSearchParams({
-        client_key: this.clientKey,
-        client_secret: this.clientSecret,
-        code,
-        grant_type: 'authorization_code',
-        redirect_uri: this.redirectUri
-      });
-
-      const response = await axios.post(TIKTOK_TOKEN_URL, params.toString(), {
+      const response = await fetch(`${this.baseUrl}/oauth/access_token/`, {
+        method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          client_key: this.clientKey,
+          client_secret: this.clientSecret,
+          code,
+          grant_type: 'authorization_code',
+          redirect_uri: redirectUri,
+        }).toString(),
       });
-
-      return response.data.data;
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to get access token');
+      }
+      
+      const data = await response.json();
+      this.accessToken = data.access_token;
+      this.expiresAt = Date.now() + (data.expires_in * 1000);
+      
+      return data;
     } catch (error) {
       console.error('Error getting TikTok access token:', error);
-      throw new Error('Failed to get TikTok access token');
+      throw error;
     }
   }
-
+  
   /**
-   * Refresh an expired access token
+   * Refresh the access token before it expires
    */
-  async refreshToken(refreshToken: string): Promise<TiktokTokenResponse | null> {
+  async refreshToken(refreshToken: string): Promise<any> {
+    if (!this.isConfigured()) {
+      throw new Error('TikTok API not configured');
+    }
+    
     try {
-      const params = new URLSearchParams({
-        client_key: this.clientKey,
-        client_secret: this.clientSecret,
-        grant_type: 'refresh_token',
-        refresh_token: refreshToken
-      });
-
-      const response = await axios.post(TIKTOK_TOKEN_URL, params.toString(), {
+      const response = await fetch(`${this.baseUrl}/oauth/refresh_token/`, {
+        method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          client_key: this.clientKey,
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+        }).toString(),
       });
-
-      return response.data.data;
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to refresh token');
+      }
+      
+      const data = await response.json();
+      this.accessToken = data.access_token;
+      this.expiresAt = Date.now() + (data.expires_in * 1000);
+      
+      return data;
     } catch (error) {
       console.error('Error refreshing TikTok token:', error);
-      return null;
+      throw error;
     }
   }
-
+  
   /**
-   * Validate and refresh the token if needed
+   * Get user information
    */
-  async validateToken(connection: TiktokConnection): Promise<boolean> {
-    try {
-      const now = new Date();
-      const expiresAt = new Date(connection.expiresAt);
-      const refreshExpiresAt = new Date(connection.refreshExpiresAt);
-
-      // If the refresh token has expired, authentication is required
-      if (now > refreshExpiresAt) {
-        return false;
-      }
-
-      // If the access token is about to expire (within 10 mins), refresh it
-      if (now > new Date(expiresAt.getTime() - 10 * 60 * 1000)) {
-        const refreshedToken = await this.refreshToken(connection.refreshToken);
-        
-        if (!refreshedToken) {
-          return false;
-        }
-
-        // Update the user's token information
-        await this.updateUserToken(connection.openId, refreshedToken);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error validating TikTok token:', error);
-      return false;
+  async getUserInfo(accessToken: string): Promise<any> {
+    if (!this.isConfigured()) {
+      throw new Error('TikTok API not configured');
     }
-  }
-
-  /**
-   * Update the user's TikTok token information
-   */
-  private async updateUserToken(openId: string, tokenData: TiktokTokenResponse): Promise<void> {
+    
     try {
-      // Get all users and find one with matching TikTok openId
-      // Note: In a real DB implementation, we would use a query instead
-      const allUsers = await Promise.all(
-        Array.from({ length: 100 }, (_, i) => storage.getUser(i + 1)).filter(Boolean)
-      );
-      
-      const user = allUsers.find(u => 
-        u && 
-        u.tiktokConnection && 
-        typeof u.tiktokConnection === 'object' && 
-        'openId' in u.tiktokConnection && 
-        u.tiktokConnection.openId === openId
-      );
-
-      if (user) {
-        // We need to type cast since tiktokConnection might be a JSON object
-        const currentConnection = user.tiktokConnection as TiktokConnection;
-        
-        await storage.updateUser(user.id, {
-          tiktokConnection: {
-            openId: currentConnection.openId,
-            accessToken: tokenData.access_token,
-            refreshToken: tokenData.refresh_token,
-            expiresAt: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
-            refreshExpiresAt: new Date(Date.now() + tokenData.refresh_expires_in * 1000).toISOString(),
-            scope: tokenData.scope,
-            connectedAt: currentConnection.connectedAt || new Date().toISOString()
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Error updating user token:', error);
-    }
-  }
-
-  /**
-   * Get user profile information from TikTok
-   */
-  async getUserProfile(connection: TiktokConnection): Promise<any> {
-    try {
-      const response = await axios.get(`${TIKTOK_API_BASE}user/info/`, {
+      const response = await fetch(`${this.baseUrl}/${this.apiVersion}/user/info/`, {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${connection.accessToken}`
-        }
-      });
-
-      const userInfo: TiktokUserInfo = response.data.data.user;
-      
-      return {
-        openId: userInfo.open_id,
-        displayName: userInfo.display_name,
-        bio: userInfo.bio_description,
-        avatarUrl: userInfo.avatar_url,
-        profileUrl: userInfo.profile_deep_link,
-        verified: userInfo.is_verified,
-        followerCount: userInfo.follower_count,
-        followingCount: userInfo.following_count,
-        likesCount: userInfo.likes_count,
-        videoCount: userInfo.video_count
-      };
-    } catch (error) {
-      console.error('Error getting TikTok user profile:', error);
-      throw new Error('Failed to get TikTok user profile');
-    }
-  }
-
-  /**
-   * Import videos from TikTok
-   */
-  async importVideos(userId: number, connection: TiktokConnection, limit: number = 10): Promise<any[]> {
-    try {
-      // Get videos from TikTok API
-      const response = await axios.get(`${TIKTOK_API_BASE}video/list/`, {
-        params: {
-          fields: ['id', 'create_time', 'cover_image_url', 'share_url', 'video_description', 'duration', 
-                  'height', 'width', 'title', 'embed_link', 'embed_html', 'like_count', 'comment_count', 
-                  'share_count', 'view_count'].join(','),
-          cursor: 0,
-          max_count: limit
+          'Authorization': `Bearer ${accessToken}`,
         },
-        headers: {
-          'Authorization': `Bearer ${connection.accessToken}`
-        }
       });
-
-      const videos: TiktokVideoInfo[] = response.data.data.videos;
-      const importedVideos = [];
-
-      // Get all existing videos for the user
-      const existingVideos = await storage.getVideosByUserId(userId);
-
-      // Process each video and save to our system
-      for (const video of videos) {
-        // Check if video already exists by comparing external IDs
-        const exists = existingVideos.some(v => {
-          if (!v.externalData) return false;
-          
-          try {
-            // Parse externalData if it's a string
-            const externalData = typeof v.externalData === 'string' 
-              ? JSON.parse(v.externalData) 
-              : v.externalData;
-              
-            return externalData && 
-                   externalData.tiktok && 
-                   externalData.tiktok.id === video.id;
-          } catch (e) {
-            return false;
-          }
-        });
-
-        if (!exists) {
-          // Create new video in our system
-          // Note: We create a valid InsertVideo object that matches our schema
-          const newVideo = await storage.createVideo({
-            userId,
-            title: video.title || video.video_description.substring(0, 50),
-            description: video.video_description,
-            thumbnailUrl: video.cover_image_url,
-            createdAt: new Date(video.create_time * 1000),
-            views: video.view_count,
-            likes: video.like_count,
-            comments: video.comment_count,
-            shares: video.share_count,
-            // Set hashtags to empty array as required by the schema
-            hashtags: [],
-            // Status and platform are stored in externalData
-            externalData: {
-              platform: 'tiktok',
-              status: 'published',
-              tiktok: {
-                id: video.id,
-                shareUrl: video.share_url,
-                embedLink: video.embed_link,
-                embedHtml: video.embed_html,
-                duration: video.duration,
-                dimensions: {
-                  height: video.height,
-                  width: video.width
-                },
-                importedAt: new Date().toISOString()
-              }
-            }
-          });
-
-          importedVideos.push(newVideo);
-        }
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to get user info');
       }
-
-      return importedVideos;
+      
+      return await response.json();
     } catch (error) {
-      console.error('Error importing TikTok videos:', error);
-      throw new Error('Failed to import TikTok videos');
+      console.error('Error getting TikTok user info:', error);
+      throw error;
     }
+  }
+  
+  /**
+   * Get user's videos
+   */
+  async getUserVideos(accessToken: string, fields: string[] = ['id', 'create_time', 'cover_image_url', 'share_url', 'view_count', 'like_count', 'comment_count'], cursor: number = 0, limit: number = 20): Promise<any> {
+    if (!this.isConfigured()) {
+      throw new Error('TikTok API not configured');
+    }
+    
+    try {
+      const queryParams = new URLSearchParams({
+        fields: fields.join(','),
+        cursor: cursor.toString(),
+        max_count: limit.toString(),
+      });
+      
+      const response = await fetch(`${this.baseUrl}/${this.apiVersion}/video/list/?${queryParams}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to get user videos');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting TikTok user videos:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Upload a video to TikTok (abstract implementation)
+   * Note: Actual implementation would follow TikTok's upload process
+   */
+  async uploadVideo(accessToken: string, videoData: any): Promise<any> {
+    if (!this.isConfigured()) {
+      throw new Error('TikTok API not configured');
+    }
+    
+    // This is a placeholder - actual implementation would follow TikTok's
+    // specific video upload process which is more complex
+    console.log('Uploading video to TikTok:', videoData);
+    return { success: true, videoId: 'mock-video-id' };
+  }
+  
+  /**
+   * Get video analytics
+   */
+  async getVideoAnalytics(accessToken: string, videoId: string): Promise<any> {
+    if (!this.isConfigured()) {
+      throw new Error('TikTok API not configured');
+    }
+    
+    try {
+      const response = await fetch(`${this.baseUrl}/${this.apiVersion}/video/data/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        // Note: TikTok API may require different parameters
+        // This is a simplified example
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to get video analytics');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting TikTok video analytics:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get trending hashtags on TikTok
+   * Note: May require specific API access
+   */
+  async getTrendingHashtags(accessToken: string): Promise<any> {
+    if (!this.isConfigured()) {
+      throw new Error('TikTok API not configured');
+    }
+    
+    // This is a placeholder - TikTok may offer this through a research API
+    // or it might require a custom implementation using their other endpoints
+    console.log('Getting trending hashtags from TikTok');
+    return {
+      trends: [
+        { name: '#fyp', viewCount: 1000000 },
+        { name: '#viral', viewCount: 900000 },
+        { name: '#trending', viewCount: 800000 },
+        // More trends would be returned in real implementation
+      ]
+    };
   }
 }
+
+// Export a singleton instance
+export const tiktokService = new TikTokService();

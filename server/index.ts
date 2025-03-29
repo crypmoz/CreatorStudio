@@ -1,51 +1,20 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import helmet from "helmet";
-import rateLimit from "express-rate-limit";
-import cors from "cors";
 import { IS_PRODUCTION } from "./config/env";
-import { injectStorage } from "./middleware/auth.middleware";
+import { setupSecurity } from "./middleware/security";
 
 const app = express();
 
 // Trust proxies (needed for rate limiting behind proxies)
 app.set('trust proxy', 1);
 
-// Apply security middleware for production
-if (IS_PRODUCTION) {
-  // Enable Helmet security headers
-  app.use(helmet());
-  
-  // Configure CORS
-  app.use(cors({
-    origin: process.env.CORS_ORIGIN || true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
-  }));
-} else {
-  // Looser CORS policy for development
-  app.use(cors());
-}
-
-// Rate limiting
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  message: "Too many requests from this IP, please try again after 15 minutes"
-});
-
-// Apply rate limiting to API routes
-app.use("/api", apiLimiter);
+// Apply enhanced security middleware
+setupSecurity(app);
 
 // Body parsing middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
-// Inject storage into request
-app.use(injectStorage);
 
 app.use((req, res, next) => {
   const start = Date.now();

@@ -53,7 +53,7 @@ import { z } from 'zod';
 import { Star, StarOff, Copy, PlusCircle, Sparkles, PenLine, Check, Trash2, Clock, Upload, Video, Image as ImageIcon, FileText as FileIcon, X } from 'lucide-react';
 import { MediaUploader } from '@/components/MediaUploader';
 import { VideoProcessor } from '@/components/VideoProcessor';
-import { ContentTemplateManager } from '@/components/ContentTemplateManager';
+import ContentTemplateManager from '@/components/ContentTemplateManager';
 
 // Form schema for idea generation
 const generateIdeasSchema = z.object({
@@ -994,14 +994,7 @@ const ContentCreation = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="px-0">
-              <ContentTemplateManager onSelectTemplate={(template) => {
-                toast({
-                  title: "Template Selected",
-                  description: `You've selected the ${template.title} template`,
-                });
-                // Here you could update the form or state with the template details
-                // Or navigate to a specific content creation workflow
-              }} />
+              <ContentTemplateManager />
             </CardContent>
           </Card>
         </TabsContent>

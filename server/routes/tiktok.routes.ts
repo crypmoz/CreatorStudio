@@ -1,280 +1,190 @@
-import express, { Request, Response } from 'express';
-import { isAuthenticated } from '../middleware/auth.middleware';
-import { requireTikTok } from '../middleware/api.middleware';
-import { TikTokService, TiktokConnection } from '../services/tiktok.service';
+import { Router, Request, Response } from 'express';
+import { tiktokService } from '../services/tiktok.service';
 import { storage } from '../storage';
-import { TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET } from '../config/env';
+import { requireTikTok } from '../middleware/api.middleware';
+import { z } from 'zod';
 
-const router = express.Router();
-const tiktokService = new TikTokService();
+const router = Router();
 
-// Map to store state tokens for auth flow
-const stateTokens = new Map<string, { userId: number, expiry: Date }>();
+// Validate TikTok API keys for all TikTok endpoints
+router.use(requireTikTok);
 
-/**
- * Generate a TikTok auth URL for the current user
- * @route GET /api/tiktok/auth-url
- */
-router.get('/auth-url', isAuthenticated, requireTikTok, async (req, res) => {
+// Check if TikTok API is configured
+router.get('/status', (req: Request, res: Response) => {
   try {
-    // Generate a random state token to prevent CSRF
-    const state = Math.random().toString(36).substring(2, 15);
-    const expiry = new Date();
-    expiry.setHours(expiry.getHours() + 1); // Token valid for 1 hour
+    const isConfigured = tiktokService.isConfigured();
+    res.json({ 
+      isConfigured,
+      message: isConfigured ? 'TikTok API ready' : 'TikTok API not configured' 
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get TikTok auth URL for connecting account
+router.post('/auth-url', (req: Request, res: Response) => {
+  try {
+    const schema = z.object({
+      redirectUri: z.string().url(),
+      state: z.string().optional(),
+      scopes: z.array(z.string()).optional(),
+    });
     
-    // Store the state token with the user ID
-    if (req.user) {
-      stateTokens.set(state, { 
-        userId: req.user.id, 
-        expiry 
-      });
+    const validation = schema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: 'Invalid request data', details: validation.error });
     }
     
-    // Generate auth URL
-    const authUrl = tiktokService.getAuthUrl(state);
+    const { redirectUri, state, scopes } = req.body;
+    const authUrl = tiktokService.getAuthUrl(redirectUri, state, scopes);
     
     res.json({ authUrl });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error generating TikTok auth URL:', error);
-    res.status(500).json({ message: 'Failed to generate TikTok authentication URL' });
+    res.status(500).json({ error: error.message });
   }
 });
 
-/**
- * Handle the TikTok OAuth callback
- * @route GET /api/tiktok/callback
- */
-router.get('/callback', requireTikTok, async (req, res) => {
+// Exchange auth code for access token
+router.post('/access-token', async (req: Request, res: Response) => {
   try {
-    const { code, state, error, error_description } = req.query;
-    
-    // Handle error from TikTok
-    if (error) {
-      console.error(`TikTok auth error: ${error}. ${error_description}`);
-      return res.redirect('/account-settings?tiktok=error');
-    }
-    
-    // Validate state token to prevent CSRF
-    if (!state || typeof state !== 'string' || !stateTokens.has(state)) {
-      return res.redirect('/account-settings?tiktok=invalid-state');
-    }
-    
-    const stateData = stateTokens.get(state as string);
-    
-    // Check if token is expired
-    if (!stateData || stateData.expiry < new Date()) {
-      stateTokens.delete(state as string);
-      return res.redirect('/account-settings?tiktok=expired');
-    }
-    
-    // Exchange code for access token
-    if (typeof code === 'string') {
-      const tokenData = await tiktokService.getAccessToken(code);
-      
-      // Save the token data to the user's account
-      const user = await storage.getUser(stateData.userId);
-      
-      if (user) {
-        const updatedUser = await storage.updateUser(stateData.userId, {
-          tiktokConnection: {
-            accessToken: tokenData.access_token,
-            refreshToken: tokenData.refresh_token,
-            openId: tokenData.open_id,
-            expiresAt: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
-            refreshExpiresAt: new Date(Date.now() + tokenData.refresh_expires_in * 1000).toISOString(),
-            scope: tokenData.scope,
-            connectedAt: new Date().toISOString()
-          }
-        });
-        
-        // Clean up state token
-        stateTokens.delete(state as string);
-        
-        // Redirect to account settings page with success
-        return res.redirect('/account-settings?tiktok=connected');
-      } else {
-        return res.redirect('/account-settings?tiktok=user-not-found');
-      }
-    } else {
-      return res.redirect('/account-settings?tiktok=no-code');
-    }
-  } catch (error) {
-    console.error('Error handling TikTok callback:', error);
-    res.redirect('/account-settings?tiktok=error');
-  }
-});
-
-/**
- * Import TikTok videos for the authenticated user
- * @route POST /api/tiktok/import-videos
- */
-router.post('/import-videos', isAuthenticated, requireTikTok, async (req, res) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    const user = await storage.getUser(req.user.id);
-    
-    if (!user || !user.tiktokConnection) {
-      return res.status(400).json({ 
-        message: 'TikTok account not connected',
-        requiresAuth: true
-      });
-    }
-    
-    // Check if token is still valid, refresh if needed
-    const tiktokConnection = user.tiktokConnection as TiktokConnection;
-    const tokenValid = await tiktokService.validateToken(tiktokConnection);
-    if (!tokenValid) {
-      // If we couldn't refresh, user needs to re-authenticate
-      return res.status(401).json({ 
-        message: 'TikTok authentication expired',
-        requiresAuth: true
-      });
-    }
-    
-    // Get limit from request body or default to 10
-    const { limit = 10 } = req.body;
-    
-    // Import videos
-    const videos = await tiktokService.importVideos(user.id, tiktokConnection, limit);
-    
-    res.json({ 
-      message: 'Videos imported successfully',
-      count: videos.length,
-      videos
-    });
-  } catch (error) {
-    console.error('Error importing TikTok videos:', error);
-    res.status(500).json({ message: 'Failed to import TikTok videos' });
-  }
-});
-
-/**
- * Get TikTok account connection status
- * @route GET /api/tiktok/connection-status
- */
-router.get('/connection-status', isAuthenticated, requireTikTok, async (req, res) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    const user = await storage.getUser(req.user.id);
-    
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    
-    // Check if user has a TikTok connection
-    const isConnected = !!user.tiktokConnection;
-    
-    let profile = null;
-    if (isConnected && user.tiktokConnection) {
-      // Get profile data if connection exists
-      try {
-        const tiktokConnection = user.tiktokConnection as TiktokConnection;
-        profile = await tiktokService.getUserProfile(tiktokConnection);
-      } catch (error) {
-        console.error('Error fetching TikTok profile:', error);
-      }
-    }
-    
-    res.json({
-      connected: isConnected,
-      connectedSince: isConnected ? (user.tiktokConnection as TiktokConnection).connectedAt : null,
-      profile
-    });
-  } catch (error) {
-    console.error('Error checking TikTok connection status:', error);
-    res.status(500).json({ message: 'Failed to check TikTok connection status' });
-  }
-});
-
-/**
- * Disconnect TikTok account
- * @route POST /api/tiktok/disconnect
- */
-router.post('/disconnect', isAuthenticated, requireTikTok, async (req, res) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    // Update user to remove TikTok connection
-    const updatedUser = await storage.updateUser(req.user.id, {
-      tiktokConnection: null
+    const schema = z.object({
+      code: z.string(),
+      redirectUri: z.string().url(),
     });
     
-    if (!updatedUser) {
-      return res.status(404).json({ message: 'User not found' });
+    const validation = schema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: 'Invalid request data', details: validation.error });
     }
     
-    res.json({ 
-      message: 'TikTok account disconnected successfully' 
+    const { code, redirectUri } = req.body;
+    const tokenData = await tiktokService.getAccessToken(code, redirectUri);
+    
+    // In a real application, you would store these tokens securely
+    // For demo purposes, we're returning them to the client
+    // In production, store in server-side session or secure database
+    res.json(tokenData);
+  } catch (error: any) {
+    console.error('Error getting TikTok access token:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Refresh access token
+router.post('/refresh-token', async (req: Request, res: Response) => {
+  try {
+    const schema = z.object({
+      refreshToken: z.string(),
     });
-  } catch (error) {
-    console.error('Error disconnecting TikTok account:', error);
-    res.status(500).json({ message: 'Failed to disconnect TikTok account' });
-  }
-});
-
-/**
- * @route GET /api/tiktok/validate-api
- * @desc Validate if TikTok API keys are set
- * @access Private
- */
-router.get('/validate-api', isAuthenticated, async (req, res) => {
-  try {
-    const isAvailable = !!(TIKTOK_CLIENT_KEY && TIKTOK_CLIENT_SECRET);
-    res.json({ available: isAvailable });
-  } catch (error) {
-    console.error('Error checking TikTok API:', error);
-    res.status(500).json({ message: 'Failed to check TikTok API availability' });
-  }
-});
-
-/**
- * @route GET /api/tiktok/test-api
- * @desc Test endpoint for TikTok API keys validation (no auth required)
- * @access Public
- */
-router.get('/test-api', async (req, res) => {
-  try {
-    const isAvailable = !!(TIKTOK_CLIENT_KEY && TIKTOK_CLIENT_SECRET);
     
-    if (isAvailable) {
-      try {
-        // This is a simple test to see if TikTok API keys are properly formatted
-        // Note: We can't fully validate the keys without user authorization
-        const authUrl = tiktokService.getAuthUrl('test_state_token');
-        
-        res.json({
-          available: true,
-          valid: true, 
-          message: 'TikTok API keys are configured and appear to be valid',
-          authUrl: authUrl // Include the auth URL just to show it's working
-        });
-      } catch (apiError: any) {
-        console.error('Error testing TikTok API:', apiError);
-        res.json({
-          available: true,
-          valid: false,
-          message: 'TikTok API keys are configured but may not be valid',
-          error: apiError.message
-        });
-      }
-    } else {
-      res.json({ 
-        available: false,
-        valid: false,
-        message: 'TikTok API keys are not configured'
-      });
+    const validation = schema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: 'Invalid request data', details: validation.error });
     }
-  } catch (error) {
-    console.error('Error testing TikTok API:', error);
-    res.status(500).json({ message: 'Failed to test TikTok API availability' });
+    
+    const { refreshToken } = req.body;
+    const tokenData = await tiktokService.refreshToken(refreshToken);
+    
+    res.json(tokenData);
+  } catch (error: any) {
+    console.error('Error refreshing TikTok token:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get user information
+router.get('/user', async (req: Request, res: Response) => {
+  try {
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    
+    if (!accessToken) {
+      return res.status(401).json({ error: 'No access token provided' });
+    }
+    
+    const userData = await tiktokService.getUserInfo(accessToken);
+    res.json(userData);
+  } catch (error: any) {
+    console.error('Error getting TikTok user data:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get user's videos
+router.get('/videos', async (req: Request, res: Response) => {
+  try {
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    
+    if (!accessToken) {
+      return res.status(401).json({ error: 'No access token provided' });
+    }
+    
+    const cursor = req.query.cursor ? parseInt(req.query.cursor as string) : 0;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+    
+    const videoData = await tiktokService.getUserVideos(
+      accessToken, 
+      ['id', 'create_time', 'cover_image_url', 'share_url', 'view_count', 'like_count', 'comment_count'],
+      cursor,
+      limit
+    );
+    
+    res.json(videoData);
+  } catch (error: any) {
+    console.error('Error getting TikTok videos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get trending hashtags
+router.get('/trending-hashtags', async (req: Request, res: Response) => {
+  try {
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    
+    if (!accessToken) {
+      return res.status(401).json({ error: 'No access token provided' });
+    }
+    
+    const trendingData = await tiktokService.getTrendingHashtags(accessToken);
+    res.json(trendingData);
+  } catch (error: any) {
+    console.error('Error getting TikTok trends:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Post new video (placeholder for actual implementation)
+router.post('/upload', async (req: Request, res: Response) => {
+  try {
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    
+    if (!accessToken) {
+      return res.status(401).json({ error: 'No access token provided' });
+    }
+    
+    const schema = z.object({
+      videoId: z.number(),
+      caption: z.string().max(150),
+      hashtags: z.string().optional(),
+    });
+    
+    const validation = schema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: 'Invalid request data', details: validation.error });
+    }
+    
+    // In a real implementation, you would:
+    // 1. Get the video file from storage
+    // 2. Upload to TikTok using their video upload API
+    // 3. Save the result in your database
+    
+    // This is a placeholder
+    const response = await tiktokService.uploadVideo(accessToken, req.body);
+    res.json(response);
+  } catch (error: any) {
+    console.error('Error uploading to TikTok:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
