@@ -43,7 +43,7 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <button 
-              className="md:hidden mr-2 text-gray-500"
+              className="md:hidden mr-2 text-[#FF0050] hover:text-[#EE1D52]"
               onClick={toggleSidebar}
             >
               <RiMenuLine className="text-xl" />
@@ -53,10 +53,10 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
           <div className="flex items-center space-x-4">
             {user && (
               <>
-                <button className="p-2 text-gray-500 hover:text-gray-700">
+                <button className="p-2 text-[#FF0050] hover:text-[#EE1D52]">
                   <RiNotification3Line className="text-xl" />
                 </button>
-                <button className="p-2 text-gray-500 hover:text-gray-700">
+                <button className="p-2 text-[#00F2EA] hover:text-[#00D2CA]">
                   <RiQuestionLine className="text-xl" />
                 </button>
                 <UserDropdown />

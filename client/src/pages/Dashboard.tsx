@@ -195,8 +195,8 @@ const Dashboard = () => {
             changeValue="2.1%"
             changeDirection="down"
             icon={RiHeart3Line}
-            iconBgColor="bg-purple-100"
-            iconColor="text-purple-600"
+            iconBgColor="bg-[#EE1D52] bg-opacity-10"
+            iconColor="text-[#EE1D52]"
           />
           
           <StatCard
@@ -205,8 +205,8 @@ const Dashboard = () => {
             changeValue="15.3%"
             changeDirection="up"
             icon={RiMoneyDollarCircleLine}
-            iconBgColor="bg-amber-100"
-            iconColor="text-amber-500"
+            iconBgColor="bg-[#FF0050] bg-opacity-10"
+            iconColor="text-[#FF0050]"
           />
         </div>
       </div>

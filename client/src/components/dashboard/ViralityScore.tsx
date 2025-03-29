@@ -21,11 +21,11 @@ const ViralityScore = ({ score, optimizations, onAnalysisClick }: ViralityScoreP
   const getIcon = (type: string) => {
     switch (type) {
       case "success":
-        return <i className="ri-checkbox-circle-line text-green-500 mr-2"></i>;
+        return <i className="ri-checkbox-circle-line text-[#00F2EA] mr-2"></i>;
       case "warning":
-        return <i className="ri-error-warning-line text-amber-500 mr-2"></i>;
+        return <i className="ri-error-warning-line text-[#EE1D52] mr-2"></i>;
       case "error":
-        return <i className="ri-close-circle-line text-red-500 mr-2"></i>;
+        return <i className="ri-close-circle-line text-[#FF0050] mr-2"></i>;
       default:
         return null;
     }
