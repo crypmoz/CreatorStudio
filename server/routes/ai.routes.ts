@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { aiService } from '../services/ai.service';
-import { authenticate } from '../middleware/auth.middleware';
+import { isAuthenticated as authenticate } from '../middleware/auth.middleware';
 import { storage } from '../storage';
 import { z } from 'zod';
 import { fromZodError } from 'zod-validation-error';

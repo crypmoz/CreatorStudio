@@ -1,56 +1,39 @@
 import { Request, Response, NextFunction } from 'express';
-import rateLimit from 'express-rate-limit';
+import { storage } from '../storage';
 
 /**
- * Authentication middleware
- * Ensures the user is authenticated before allowing access to protected routes
+ * Middleware to check if user is authenticated
  */
-export function authenticate(req: Request, res: Response, next: NextFunction) {
+export function isAuthenticated(req: Request, res: Response, next: NextFunction) {
   if (req.isAuthenticated()) {
-    next();
-  } else {
-    res.status(401).json({ error: 'Authentication required' });
+    return next();
   }
+  res.status(401).json({ message: 'Unauthorized - Please login to access this resource' });
 }
 
 /**
- * Role-based authorization middleware
- * Ensures the authenticated user has the required role
- * @param {string[]} roles Array of allowed roles
+ * Middleware to check if user has admin role
  */
-export function authorize(roles: string[]) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-    
-    if (!req.user || !roles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
-    }
-    
-    next();
-  };
+export function isAdmin(req: Request, res: Response, next: NextFunction) {
+  if (req.isAuthenticated() && req.user && req.user.role === 'admin') {
+    return next();
+  }
+  res.status(403).json({ message: 'Forbidden - Admin access required' });
 }
 
 /**
- * Rate limiting middleware factory
- * Creates a rate limiter middleware with specified configuration
- * @param {number} max Maximum number of requests in the time window
- * @param {number} windowMs Time window in milliseconds
- * @param {string} message Optional custom error message
- * @returns Rate limiter middleware
+ * Add storage to request object
  */
-export function rateLimiter(max: number, windowMs: number, message?: string) {
-  return rateLimit({
-    windowMs,
-    max,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: message || 'Too many requests, please try again later',
-    handler: (req: Request, res: Response) => {
-      res.status(429).json({
-        error: message || 'Too many requests, please try again later'
-      });
+export function injectStorage(req: Request, _res: Response, next: NextFunction) {
+  req.storage = storage;
+  next();
+}
+
+// Extend Express Request interface to include user and storage
+declare global {
+  namespace Express {
+    interface Request {
+      storage: typeof storage;
     }
-  });
+  }
 }

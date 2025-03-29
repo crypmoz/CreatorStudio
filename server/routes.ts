@@ -17,6 +17,7 @@ import {
 import authRoutes from "./routes/auth.routes";
 import aiRoutes from "./routes/ai.routes";
 import schedulerRoutes from "./routes/scheduler.routes";
+import tiktokRoutes from "./routes/tiktok.routes";
 import { setupAuth } from "./auth";
 import express from "express";
 
@@ -29,6 +30,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/auth', authRoutes);
   app.use('/api/ai', aiRoutes);
   app.use('/api/scheduler', schedulerRoutes);
+  app.use('/api/tiktok', tiktokRoutes);
   
   // User routes
   app.get('/api/users/:id', async (req, res) => {

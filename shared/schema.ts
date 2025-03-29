@@ -44,6 +44,7 @@ export const users = pgTable("users", {
     avgEngagement: null,
     contentFrequency: null
   }),
+  tiktokConnection: jsonb("tiktok_connection"),
 });
 
 // Video model
@@ -62,6 +63,7 @@ export const videos = pgTable("videos", {
   viralityScore: integer("virality_score").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   hashtags: text("hashtags").array(),
+  externalData: jsonb("external_data"),
 });
 
 // Content Template model

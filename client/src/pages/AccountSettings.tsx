@@ -8,14 +8,288 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2 } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
+import { Loader2, Check, AlertCircle, Trash2, RefreshCw } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { User } from "@shared/schema";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useLocation } from "wouter";
+
+// TikTok Connection Component
+function TikTokConnection({ userId }: { userId: number }) {
+  const { toast } = useToast();
+  const [importingVideos, setImportingVideos] = useState(false);
+  
+  // Fetch TikTok connection status
+  const { data: connectionStatus, isLoading, refetch } = useQuery({
+    queryKey: ['/api/tiktok/connection-status'],
+    queryFn: async () => {
+      const res = await apiRequest('GET', '/api/tiktok/connection-status');
+      return res.json();
+    }
+  });
+  
+  // Get TikTok auth URL
+  const getAuthUrlMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('GET', '/api/tiktok/auth-url');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: "Failed to get TikTok authentication URL. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Disconnect TikTok account
+  const disconnectMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/tiktok/disconnect');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "TikTok Disconnected",
+        description: "Your TikTok account has been disconnected successfully.",
+      });
+      refetch();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: "Failed to disconnect TikTok account. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Import videos from TikTok
+  const importVideosMutation = useMutation({
+    mutationFn: async () => {
+      setImportingVideos(true);
+      try {
+        const res = await apiRequest('POST', '/api/tiktok/import-videos', { limit: 10 });
+        return res.json();
+      } finally {
+        setImportingVideos(false);
+      }
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Videos Imported",
+        description: `Successfully imported ${data.count} videos from TikTok.`,
+      });
+    },
+    onError: (error: any) => {
+      const requiresAuth = error.response?.data?.requiresAuth;
+      
+      if (requiresAuth) {
+        toast({
+          title: "Authentication Required",
+          description: "Your TikTok connection has expired. Please reconnect your account.",
+          variant: "destructive",
+        });
+        
+        // Automatically initiate reconnection
+        getAuthUrlMutation.mutate();
+      } else {
+        toast({
+          title: "Import Failed",
+          description: "Failed to import videos from TikTok. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  });
+  
+  const handleConnect = () => {
+    getAuthUrlMutation.mutate();
+  };
+  
+  const handleDisconnect = () => {
+    disconnectMutation.mutate();
+  };
+  
+  const handleImportVideos = () => {
+    importVideosMutation.mutate();
+  };
+  
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <svg className="w-6 h-6 mr-2 text-[#FF0050]" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19.321 5.562a5.825 5.825 0 0 1-.577-.317 5.526 5.526 0 0 1-2.715-4.75h-3.127v16.573c0 .85-.345 1.621-.903 2.181-.584.585-1.396.947-2.291.947-1.788 0-3.236-1.448-3.236-3.236 0-1.788 1.448-3.236 3.236-3.236.249 0 .491.028.724.082V9.91a7.208 7.208 0 0 0-.724-.037c-3.997 0-7.231 3.233-7.231 7.231 0 3.998 3.234 7.229 7.231 7.229 3.998 0 7.229-3.231 7.229-7.229l.027-11.178a9.228 9.228 0 0 0 5.386 1.7V3.58a5.574 5.574 0 0 1-3.029-1.031V5.562z" />
+            </svg>
+            TikTok Integration
+          </CardTitle>
+          <CardDescription>Connect your TikTok account to import your content</CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center py-6">
+          <Loader2 className="w-8 h-8 animate-spin text-[#FF0050]" />
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  const isConnected = connectionStatus?.connected;
+  const profile = connectionStatus?.profile;
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center">
+          <svg className="w-6 h-6 mr-2 text-[#FF0050]" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19.321 5.562a5.825 5.825 0 0 1-.577-.317 5.526 5.526 0 0 1-2.715-4.75h-3.127v16.573c0 .85-.345 1.621-.903 2.181-.584.585-1.396.947-2.291.947-1.788 0-3.236-1.448-3.236-3.236 0-1.788 1.448-3.236 3.236-3.236.249 0 .491.028.724.082V9.91a7.208 7.208 0 0 0-.724-.037c-3.997 0-7.231 3.233-7.231 7.231 0 3.998 3.234 7.229 7.231 7.229 3.998 0 7.229-3.231 7.229-7.229l.027-11.178a9.228 9.228 0 0 0 5.386 1.7V3.58a5.574 5.574 0 0 1-3.029-1.031V5.562z" />
+          </svg>
+          TikTok Integration
+          {isConnected && (
+            <Badge variant="success" className="ml-2 bg-green-500">
+              Connected
+            </Badge>
+          )}
+        </CardTitle>
+        <CardDescription>
+          {isConnected 
+            ? "Your TikTok account is connected" 
+            : "Connect your TikTok account to import your content"}
+        </CardDescription>
+      </CardHeader>
+      
+      <CardContent>
+        {isConnected ? (
+          <div className="space-y-4">
+            {profile && (
+              <div className="flex items-center space-x-4 bg-gray-50 p-4 rounded-md">
+                <img 
+                  src={profile.avatarUrl} 
+                  alt={profile.displayName} 
+                  className="w-12 h-12 rounded-full object-cover"
+                />
+                <div>
+                  <h3 className="font-semibold">{profile.displayName}</h3>
+                  <p className="text-sm text-gray-500">
+                    {profile.followerCount.toLocaleString()} followers • {profile.videoCount.toLocaleString()} videos
+                  </p>
+                  <a 
+                    href={profile.profileUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-500 hover:underline"
+                  >
+                    View Profile
+                  </a>
+                </div>
+              </div>
+            )}
+            
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Import Your TikTok Videos</AlertTitle>
+              <AlertDescription>
+                Import your existing TikTok videos into the platform to analyze their performance and create new content based on what works.
+              </AlertDescription>
+            </Alert>
+          </div>
+        ) : (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Connect your TikTok account</AlertTitle>
+            <AlertDescription>
+              Connecting your TikTok account enables automatic content importing, scheduling posts, 
+              and viewing analytics all in one place.
+            </AlertDescription>
+          </Alert>
+        )}
+      </CardContent>
+      
+      <CardFooter className="flex justify-end space-x-2">
+        {isConnected ? (
+          <>
+            <Button 
+              variant="outline" 
+              className="border-red-300 text-red-600 hover:bg-red-50"
+              onClick={handleDisconnect}
+              disabled={disconnectMutation.isPending}
+            >
+              {disconnectMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Disconnecting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Disconnect
+                </>
+              )}
+            </Button>
+            
+            <Button
+              onClick={handleImportVideos}
+              disabled={importingVideos}
+              className="bg-[#FF0050] hover:bg-[#CC0040] text-white"
+            >
+              {importingVideos ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Import Videos
+                </>
+              )}
+            </Button>
+          </>
+        ) : (
+          <Button
+            onClick={handleConnect}
+            disabled={getAuthUrlMutation.isPending}
+            className="bg-[#FF0050] hover:bg-[#CC0040] text-white"
+          >
+            {getAuthUrlMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Connecting...
+              </>
+            ) : (
+              "Connect TikTok Account"
+            )}
+          </Button>
+        )}
+      </CardFooter>
+    </Card>
+  );
+}
 
 export default function AccountSettings() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [location] = useLocation();
+  
+  // Check if we've been redirected from TikTok OAuth
+  useEffect(() => {
+    if (location.includes('tiktok=connected')) {
+      toast({
+        title: "TikTok Connected",
+        description: "Your TikTok account has been successfully connected.",
+        variant: "default",
+      });
+    }
+  }, [location, toast]);
   
   const [profileData, setProfileData] = useState({
     displayName: "",
@@ -127,6 +401,7 @@ export default function AccountSettings() {
         <TabsList className="mb-6">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="social">Social Profiles</TabsTrigger>
+          <TabsTrigger value="connections">Platform Connections</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
         </TabsList>
         
@@ -245,6 +520,18 @@ export default function AccountSettings() {
                     placeholder="@username"
                   />
                 </div>
+              </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="connections">
+            <div className="space-y-6 bg-white p-6 rounded-md shadow-sm">
+              <h2 className="text-xl font-semibold">Platform Connections</h2>
+              <Separator />
+              
+              <div className="space-y-6">
+                {/* TikTok Connection Card */}
+                <TikTokConnection userId={user.id} />
               </div>
             </div>
           </TabsContent>

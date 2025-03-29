@@ -1,9 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authService } from '../services/auth.service';
-import { authenticate, authorize, rateLimiter } from '../middleware/auth.middleware';
+import { isAuthenticated as authenticate } from '../middleware/auth.middleware';
 import { insertUserSchema } from '@shared/schema';
 import { z } from 'zod';
 import { fromZodError } from 'zod-validation-error';
+import rateLimit from 'express-rate-limit';
 
 const router = Router();
 
@@ -52,8 +53,14 @@ const profileUpdateSchema = z.object({
   contentCreatorInfo: z.any().optional()
 });
 
+// Rate limiting implementation
+
 // Rate limiting for auth-related endpoints
-const authRateLimiter = rateLimiter(20, 60 * 1000); // 20 requests per minute
+const authRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 20, // 20 requests per minute
+  message: { error: 'Too many requests, please try again later.' }
+});
 
 // Apply rate limiting to all auth routes
 router.use(authRateLimiter);

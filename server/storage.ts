@@ -588,6 +588,7 @@ export class MemStorage implements IStorage {
       dateOfBirth: null,
       phoneNumber: null,
       emailVerified: true,
+      tiktokConnection: null,
       createdAt: new Date(),
       updatedAt: new Date(),
       lastLoginAt: new Date(),
@@ -706,7 +707,8 @@ export class MemStorage implements IStorage {
       completionRate: 0.78,
       viralityScore: 78,
       createdAt: new Date(),
-      hashtags: ["editing", "tiktok", "tutorial"]
+      hashtags: ["editing", "tiktok", "tutorial"],
+      externalData: null
     };
     this.videos.set(video.id, video);
     
