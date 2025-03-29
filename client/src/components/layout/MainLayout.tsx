@@ -18,18 +18,27 @@ const MainLayout = ({ children }: MainLayoutProps) => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  // If on auth page or user not authenticated, don't show sidebar
+  // If on auth page, render just the auth component
   const isAuthPage = location === "/auth";
-  const shouldShowSidebar = !isAuthPage && user;
-
   if (isAuthPage) {
     return <>{children}</>;
   }
 
-  // For legal pages (terms, privacy policy), show a different layout
-  const isLegalPage = location === "/terms-of-use" || location === "/privacy-policy";
+  // List of public pages that should use the public layout (no sidebar, simplified structure)
+  const publicPages = [
+    "/", // Landing page
+    "/terms-of-use", 
+    "/privacy-policy",
+    "/help-center",
+    "/contact",
+    "/pricing",
+    "/blog"
+  ];
   
-  if (isLegalPage) {
+  const isPublicPage = publicPages.includes(location);
+  
+  // For public pages, show a different layout without sidebar
+  if (isPublicPage && !user) {
     return (
       <div className="flex flex-col min-h-screen">
         <main className="flex-1">
@@ -40,6 +49,10 @@ const MainLayout = ({ children }: MainLayoutProps) => {
     );
   }
   
+  // Determine if sidebar should be shown
+  const shouldShowSidebar = !isAuthPage && user;
+  
+  // Dashboard layout with sidebar for authenticated users
   return (
     <div className="flex flex-col h-screen">
       <div className="flex flex-1 overflow-hidden">
@@ -48,7 +61,9 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header toggleSidebar={toggleSidebar} />
+          {/* Show header for authenticated users */}
+          {user && <Header toggleSidebar={toggleSidebar} />}
+          
           <main className="flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6 lg:p-8">
             {children}
           </main>
