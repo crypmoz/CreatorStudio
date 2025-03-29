@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useOnboarding } from "@/hooks/use-onboarding";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,13 +9,75 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Check, AlertCircle, Trash2, RefreshCw } from "lucide-react";
+import { Loader2, Check, AlertCircle, Trash2, RefreshCw, Award, HelpCircle } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { User } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
+import { BadgesDisplay } from "@/components/onboarding/BadgesDisplay";
+
+// OnboardingPreferences Component
+function OnboardingPreferences() {
+  const { startOnboarding, progress, steps } = useOnboarding();
+  const { toast } = useToast();
+  
+  // Calculate completion percentage
+  const totalSteps = steps.length - 1; // Exclude the "completed" step
+  const completedSteps = progress.completedSteps.length;
+  const completionPercentage = Math.round((completedSteps / totalSteps) * 100);
+  
+  const handleRestartTutorial = () => {
+    startOnboarding();
+    toast({
+      title: "Tutorial Restarted",
+      description: "The platform tutorial has been restarted. Follow the prompts to continue.",
+    });
+  };
+  
+  return (
+    <div className="space-y-6">
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="text-lg font-medium flex items-center">
+              <HelpCircle className="h-5 w-5 mr-2 text-[#FF0050]" />
+              Platform Tutorial
+            </h3>
+            <p className="text-gray-600 text-sm mt-1">
+              Learn about the platform's features through an interactive tutorial
+            </p>
+          </div>
+          
+          <Button 
+            onClick={handleRestartTutorial}
+            className="bg-[#FF0050] hover:bg-[#CC0040] text-white"
+          >
+            Restart Tutorial
+          </Button>
+        </div>
+        
+        <div className="mb-6">
+          <div className="flex justify-between text-sm text-gray-600 mb-1">
+            <span>Tutorial Progress</span>
+            <span>{completionPercentage}% Complete</span>
+          </div>
+          <Progress value={completionPercentage} className="h-2" />
+        </div>
+        
+        <div className="pt-4 border-t">
+          <h4 className="font-medium mb-4 flex items-center">
+            <Award className="h-4 w-4 mr-2 text-yellow-500" />
+            Your Achievements
+          </h4>
+          <BadgesDisplay />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // TikTok Connection Component
 function TikTokConnection({ userId }: { userId: number }) {
@@ -581,6 +644,13 @@ export default function AccountSettings() {
                     />
                     <span>Enable notifications</span>
                   </Label>
+                </div>
+              </div>
+              
+              <div className="pt-6 mt-6 border-t">
+                <h3 className="text-lg font-medium mb-4">Platform Onboarding</h3>
+                <div className="space-y-4">
+                  <OnboardingPreferences />
                 </div>
               </div>
             </div>

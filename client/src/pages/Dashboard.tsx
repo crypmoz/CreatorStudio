@@ -164,7 +164,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div>
+    <div className="dashboard-overview">
       {/* Overview Section */}
       <div className="mb-8">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Account Overview</h2>
@@ -212,7 +212,7 @@ const Dashboard = () => {
       </div>
 
       {/* Algorithm Assistant Section */}
-      <div className="mb-8">
+      <div className="mb-8" data-section="algorithm-assistant">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Algorithm Assistant</h2>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Virality Score Card */}
@@ -237,43 +237,73 @@ const Dashboard = () => {
       {/* Content & Scheduling Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Content Creation Hub */}
-        <ContentTemplates 
-          templates={isLoadingTemplates ? [] : templates || []}
-          aiSuggestions={aiSuggestions}
-          onNewVideoClick={handleNewVideoClick}
-          onTemplateClick={handleTemplateClick}
-          onViewMoreClick={handleViewMoreIdeasClick}
-        />
+        <div data-section="content-creation">
+          <ContentTemplates 
+            templates={isLoadingTemplates ? [] : templates || []}
+            aiSuggestions={aiSuggestions}
+            onNewVideoClick={handleNewVideoClick}
+            onTemplateClick={handleTemplateClick}
+            onViewMoreClick={handleViewMoreIdeasClick}
+          />
+        </div>
 
         {/* Cross-Platform Scheduler */}
-        <CalendarSchedule 
-          month="June"
-          year={2023}
-          days={calendarDays}
-          scheduledPosts={isLoadingPosts ? [] : scheduledPosts || []}
-          onScheduleClick={handleScheduleClick}
-          onPrevMonth={() => {}}
-          onNextMonth={() => {}}
-          onDayClick={() => {}}
-        />
+        <div data-section="scheduler">
+          <CalendarSchedule 
+            month="June"
+            year={2023}
+            days={calendarDays}
+            scheduledPosts={isLoadingPosts ? [] : scheduledPosts || []}
+            onScheduleClick={handleScheduleClick}
+            onPrevMonth={() => {}}
+            onNextMonth={() => {}}
+            onDayClick={() => {}}
+          />
+        </div>
       </div>
 
       {/* Community & Monetization Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Community Manager */}
-        <CommentsList 
-          comments={isLoadingComments ? [] : comments || []}
-          insights={engagementInsights}
-          onViewAllClick={handleViewAllCommentsClick}
-          onReplyClick={handleReplyComment}
-        />
+        <div data-section="community-manager">
+          <CommentsList 
+            comments={isLoadingComments ? [] : comments || []}
+            insights={engagementInsights}
+            onViewAllClick={handleViewAllCommentsClick}
+            onReplyClick={handleReplyComment}
+          />
+        </div>
 
         {/* Monetization Dashboard */}
-        <RevenueChart 
-          revenueSources={revenueSources}
-          summary={revenueSummary}
-          onViewReportsClick={handleViewReportsClick}
-        />
+        <div data-section="monetization">
+          <RevenueChart 
+            revenueSources={revenueSources}
+            summary={revenueSummary}
+            onViewReportsClick={handleViewReportsClick}
+          />
+        </div>
+      </div>
+      
+      {/* AI Agent Section */}
+      <div className="mt-8" data-section="ai-agent">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">AI Agent</h2>
+        <div className="bg-gradient-to-r from-[#00F2EA]/10 to-[#FF0050]/10 rounded-lg p-6 border border-gray-200">
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            <div className="p-4 rounded-full bg-gradient-to-r from-[#00F2EA] to-[#FF0050] text-white">
+              <RiMoneyDollarCircleLine className="h-8 w-8" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-medium">Your Personal AI Assistant</h3>
+              <p className="text-gray-600 mt-1">Generate content ideas, create captions, analyze trends, and more with our AI-powered assistant.</p>
+            </div>
+            <button 
+              onClick={() => setLocation("/ai-agent")}
+              className="px-4 py-2 bg-gradient-to-r from-[#00F2EA] to-[#FF0050] text-white rounded-md font-medium hover:opacity-90 transition-opacity"
+            >
+              Open AI Agent
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
