@@ -363,10 +363,6 @@ export default function AccountSettings() {
   });
   
   const [socialProfiles, setSocialProfiles] = useState({
-    instagram: "",
-    youtube: "",
-    twitter: "",
-    facebook: "",
     tiktok: "",
   });
   
@@ -388,10 +384,6 @@ export default function AccountSettings() {
       
       if (user.socialProfiles) {
         setSocialProfiles({
-          instagram: user.socialProfiles.instagram || "",
-          youtube: user.socialProfiles.youtube || "",
-          twitter: user.socialProfiles.twitter || "",
-          facebook: user.socialProfiles.facebook || "",
           tiktok: user.socialProfiles.tiktok || "",
         });
       }
@@ -463,8 +455,8 @@ export default function AccountSettings() {
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="mb-6">
           <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="social">Social Profiles</TabsTrigger>
-          <TabsTrigger value="connections">Platform Connections</TabsTrigger>
+          <TabsTrigger value="social">TikTok Profile</TabsTrigger>
+          <TabsTrigger value="connections">TikTok Connection</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
         </TabsList>
         
@@ -530,58 +522,19 @@ export default function AccountSettings() {
           
           <TabsContent value="social">
             <div className="space-y-6 bg-white p-6 rounded-md shadow-sm">
-              <h2 className="text-xl font-semibold">Social Media Profiles</h2>
+              <h2 className="text-xl font-semibold">TikTok Profile</h2>
               <Separator />
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 max-w-md">
                 <div className="space-y-2">
-                  <Label htmlFor="instagram">Instagram</Label>
-                  <Input
-                    id="instagram"
-                    value={socialProfiles.instagram}
-                    onChange={(e) => setSocialProfiles({ ...socialProfiles, instagram: e.target.value })}
-                    placeholder="@username"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="youtube">YouTube</Label>
-                  <Input
-                    id="youtube"
-                    value={socialProfiles.youtube}
-                    onChange={(e) => setSocialProfiles({ ...socialProfiles, youtube: e.target.value })}
-                    placeholder="channel name"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="twitter">Twitter</Label>
-                  <Input
-                    id="twitter"
-                    value={socialProfiles.twitter}
-                    onChange={(e) => setSocialProfiles({ ...socialProfiles, twitter: e.target.value })}
-                    placeholder="@username"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="facebook">Facebook</Label>
-                  <Input
-                    id="facebook"
-                    value={socialProfiles.facebook}
-                    onChange={(e) => setSocialProfiles({ ...socialProfiles, facebook: e.target.value })}
-                    placeholder="username or page name"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="tiktok">TikTok</Label>
+                  <Label htmlFor="tiktok">TikTok Username</Label>
                   <Input
                     id="tiktok"
                     value={socialProfiles.tiktok}
                     onChange={(e) => setSocialProfiles({ ...socialProfiles, tiktok: e.target.value })}
                     placeholder="@username"
                   />
+                  <p className="text-sm text-gray-500">Enter your TikTok username to connect your content with analytics.</p>
                 </div>
               </div>
             </div>
@@ -589,7 +542,7 @@ export default function AccountSettings() {
           
           <TabsContent value="connections">
             <div className="space-y-6 bg-white p-6 rounded-md shadow-sm">
-              <h2 className="text-xl font-semibold">Platform Connections</h2>
+              <h2 className="text-xl font-semibold">TikTok Connection</h2>
               <Separator />
               
               <div className="space-y-6">
@@ -648,7 +601,7 @@ export default function AccountSettings() {
               </div>
               
               <div className="pt-6 mt-6 border-t">
-                <h3 className="text-lg font-medium mb-4">Platform Onboarding</h3>
+                <h3 className="text-lg font-medium mb-4">TikTok Creator Onboarding</h3>
                 <div className="space-y-4">
                   <OnboardingPreferences />
                 </div>

@@ -379,8 +379,8 @@ const Scheduler = () => {
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Cross-Platform Scheduler</h1>
-          <p className="text-gray-600 mt-1">Schedule and manage content across multiple platforms</p>
+          <h1 className="text-3xl font-bold text-gray-900">TikTok Scheduler</h1>
+          <p className="text-gray-600 mt-1">Schedule and manage your TikTok content</p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
@@ -392,7 +392,7 @@ const Scheduler = () => {
             <DialogHeader>
               <DialogTitle>Schedule a New Post</DialogTitle>
               <DialogDescription>
-                Create and schedule content across multiple platforms
+                Create and schedule your TikTok content
               </DialogDescription>
             </DialogHeader>
             <Form {...createForm}>
