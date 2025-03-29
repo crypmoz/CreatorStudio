@@ -1,8 +1,8 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from "@/hooks/use-auth";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 
 // Pages
@@ -19,6 +19,11 @@ import AccountSettings from "@/pages/AccountSettings";
 import AuthPage from "@/pages/auth-page";
 import TermsOfUse from "@/pages/TermsOfUse";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import HelpCenter from "@/pages/HelpCenter";
+import Contact from "@/pages/Contact";
+import Pricing from "@/pages/Pricing";
+import Blog from "@/pages/Blog";
+import Landing from "@/pages/Landing";
 import MainLayout from "@/components/layout/MainLayout";
 
 // Setup Auth Request Interceptor
@@ -26,17 +31,29 @@ import { setupAuthInterceptor } from "./lib/queryClient";
 setupAuthInterceptor();
 
 function Router() {
+  const { user } = useAuth();
+  
   return (
     <Switch>
+      {/* Public Landing Page for Non-Authenticated Users */}
+      <Route path="/" component={() => {
+        // If user is not authenticated, show Landing page, otherwise redirect to Dashboard
+        return !user ? <Landing /> : <Dashboard />;
+      }} />
+      
       {/* Auth Routes */}
       <Route path="/auth" component={AuthPage} />
 
-      {/* Legal Pages - Public */}
+      {/* Public Pages */}
       <Route path="/terms-of-use" component={TermsOfUse} />
       <Route path="/privacy-policy" component={PrivacyPolicy} />
-
+      <Route path="/help-center" component={HelpCenter} />
+      <Route path="/contact" component={Contact} />
+      <Route path="/pricing" component={Pricing} />
+      <Route path="/blog" component={Blog} />
+      
       {/* Protected Routes */}
-      <ProtectedRoute path="/" component={Dashboard} />
+      <ProtectedRoute path="/dashboard" component={Dashboard} />
       <ProtectedRoute path="/algorithm-assistant" component={AlgorithmAssistant} />
       <ProtectedRoute path="/content-creation" component={ContentCreation} />
       <ProtectedRoute path="/scheduler" component={Scheduler} />

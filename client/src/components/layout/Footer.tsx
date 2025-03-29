@@ -11,10 +11,10 @@ export default function Footer() {
         </div>
         <div className="flex space-x-6">
           <Link href="/terms-of-use">
-            <a className="hover:text-primary transition-colors duration-200">Terms of Use</a>
+            <span className="hover:text-primary transition-colors duration-200 cursor-pointer">Terms of Use</span>
           </Link>
           <Link href="/privacy-policy">
-            <a className="hover:text-primary transition-colors duration-200">Privacy Policy</a>
+            <span className="hover:text-primary transition-colors duration-200 cursor-pointer">Privacy Policy</span>
           </Link>
           <a 
             href="mailto:support@creatoraide.com" 
