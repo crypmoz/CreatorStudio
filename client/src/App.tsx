@@ -17,6 +17,8 @@ import AudienceGrowth from "@/pages/AudienceGrowth";
 import AIAgent from "@/pages/AIAgent";
 import AccountSettings from "@/pages/AccountSettings";
 import AuthPage from "@/pages/auth-page";
+import TermsOfUse from "@/pages/TermsOfUse";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import MainLayout from "@/components/layout/MainLayout";
 
 // Setup Auth Request Interceptor
@@ -28,6 +30,10 @@ function Router() {
     <Switch>
       {/* Auth Routes */}
       <Route path="/auth" component={AuthPage} />
+
+      {/* Legal Pages - Public */}
+      <Route path="/terms-of-use" component={TermsOfUse} />
+      <Route path="/privacy-policy" component={PrivacyPolicy} />
 
       {/* Protected Routes */}
       <ProtectedRoute path="/" component={Dashboard} />
