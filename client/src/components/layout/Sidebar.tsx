@@ -1,5 +1,5 @@
 import { useLocation, Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import { RiDashboardLine, RiLineChartLine, RiMovieLine, RiCalendar2Line, RiTeamLine, RiMoneyDollarCircleLine, RiUserStarLine, RiRobotLine, RiSettingsLine } from "react-icons/ri";
 
 interface SidebarProps {
@@ -9,16 +9,7 @@ interface SidebarProps {
 
 const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
   const [location] = useLocation();
-  
-  const { data: user } = useQuery<{
-    id: number;
-    username: string;
-    displayName: string;
-    handle?: string;
-    avatar?: string;
-  }>({
-    queryKey: ["/api/users/1"],
-  });
+  const { user } = useAuth();
 
   const navItems = [
     { path: "/", label: "Dashboard", icon: <RiDashboardLine className="mr-3 text-lg" /> },
@@ -76,12 +67,12 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
                   <>
                     <img 
                       className="h-10 w-10 rounded-full" 
-                      src={user.avatar || "https://via.placeholder.com/40"} 
+                      src={user.profileImageUrl || "https://via.placeholder.com/40"} 
                       alt="Profile"
                     />
                     <div className="ml-3">
                       <p className="text-sm font-medium">{user.displayName}</p>
-                      <p className="text-xs text-gray-500">{user.handle}</p>
+                      <p className="text-xs text-gray-500">{user.tiktokHandle || "@" + user.username}</p>
                     </div>
                   </>
                 ) : (

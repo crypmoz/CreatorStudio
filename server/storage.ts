@@ -140,9 +140,63 @@ export class MemStorage implements IStorage {
     // Ensure null values for optional fields
     const user: User = { 
       ...insertUser, 
-      id
+      id,
+      bio: insertUser.bio || null,
+      profileImageUrl: insertUser.profileImageUrl || null,
+      role: insertUser.role || "creator",
+      provider: "email",
+      providerId: null,
+      tiktokHandle: insertUser.tiktokHandle || null,
+      country: insertUser.country || null,
+      dateOfBirth: null,
+      phoneNumber: null,
+      emailVerified: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastLoginAt: new Date(),
+      twoFactorEnabled: false,
+      twoFactorSecret: null,
+      preferences: {
+        notifications: true,
+        theme: "system",
+        language: "en"
+      },
+      socialProfiles: {
+        instagram: null,
+        youtube: null,
+        twitter: null,
+        facebook: null,
+        tiktok: null
+      },
+      contentCreatorInfo: {
+        niche: [],
+        brandDeals: false,
+        monetized: false,
+        avgViews: 0,
+        avgEngagement: 0,
+        contentFrequency: "weekly"
+      }
     };
     this.users.set(id, user);
+    
+    // Create default analytics for the new user
+    const analytics: Analytics = {
+      id: this.currentAnalyticsId++,
+      userId: id,
+      date: new Date(),
+      totalViews: 0,
+      followers: 0,
+      engagement: 0,
+      estimatedRevenue: 0,
+      topContentTypes: [],
+      impressionsByDemographic: {},
+      watchTime: 0,
+      conversionRate: 0,
+      shareRate: 0
+    };
+    
+    this.analytics.set(analytics.id, analytics);
+    
     return user;
   }
   

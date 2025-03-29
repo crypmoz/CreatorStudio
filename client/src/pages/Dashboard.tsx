@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { 
   RiEyeLine, 
   RiUserFollowLine, 
@@ -19,10 +20,13 @@ import { useLocation } from "wouter";
 const Dashboard = () => {
   const { toast } = useToast();
   const [_, setLocation] = useLocation();
+  const { user } = useAuth();
+  const userId = user?.id;
 
   // Fetch analytics data
   const { data: analytics, isLoading: isLoadingAnalytics } = useQuery({
-    queryKey: ["/api/users/1/analytics"],
+    queryKey: [`/api/users/${userId}/analytics`],
+    enabled: !!userId,
   });
 
   // Fetch content templates
@@ -32,17 +36,19 @@ const Dashboard = () => {
 
   // Fetch scheduled posts
   const { data: scheduledPosts, isLoading: isLoadingPosts } = useQuery({
-    queryKey: ["/api/users/1/scheduled-posts"],
+    queryKey: [`/api/users/${userId}/scheduled-posts`],
+    enabled: !!userId,
   });
 
   // Fetch comments
   const { data: comments, isLoading: isLoadingComments } = useQuery({
-    queryKey: ["/api/videos/1/comments"],
+    queryKey: ["/api/videos/1/comments"], // This will be changed later to be user-specific
   });
 
   // Fetch revenue data
   const { data: revenue, isLoading: isLoadingRevenue } = useQuery({
-    queryKey: ["/api/users/1/revenue"],
+    queryKey: [`/api/users/${userId}/revenue`],
+    enabled: !!userId,
   });
 
   // Handler functions
