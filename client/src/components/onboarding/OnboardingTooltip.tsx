@@ -24,11 +24,10 @@ export function OnboardingTooltip() {
   const [tooltipPosition, setTooltipPosition] = useState<"top" | "right" | "bottom" | "left">("bottom");
   const [targetEl, setTargetEl] = useState<Element | null>(null);
   
-  // If no active step or not active, don't render
-  if (!isActive || !currentStep) return null;
-  
   // Calculate progress percentage
-  const progressPercentage = Math.round((progress.completedSteps.length / (steps.length - 1)) * 100);
+  const progressPercentage = currentStep 
+    ? Math.round((progress.completedSteps.length / (steps.length - 1)) * 100)
+    : 0;
   
   // Effect to position the tooltip relative to the target element
   useEffect(() => {
@@ -102,14 +101,20 @@ export function OnboardingTooltip() {
     }
   }, [currentStep, location]);
   
+  // If no active step or not active, don't render
+  if (!isActive || !currentStep) return null;
+  
+  // At this point, currentStep is guaranteed to be non-null
+  const step = currentStep; // Create a non-null reference
+  
   // Determine if we're on the first or last step
-  const isFirstStep = currentStep.order === 0;
-  const isLastStep = currentStep.order === steps.length - 1;
+  const isFirstStep = step.order === 0;
+  const isLastStep = step.order === steps.length - 1;
   
   return (
     <>
       {/* Overlay for modal effect */}
-      {(currentStep.id === "welcome" || currentStep.id === "completed") && (
+      {(step.id === "welcome" || step.id === "completed") && (
         <div className="fixed inset-0 bg-black/40 z-50 backdrop-blur-sm" />
       )}
       
@@ -117,18 +122,18 @@ export function OnboardingTooltip() {
       <Card 
         className={cn(
           "fixed z-[60] w-[400px] shadow-lg transition-all duration-300",
-          currentStep.id === "welcome" || currentStep.id === "completed" 
+          step.id === "welcome" || step.id === "completed" 
             ? "top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" 
             : "transform"
         )}
         style={
-          currentStep.id === "welcome" || currentStep.id === "completed" 
+          step.id === "welcome" || step.id === "completed" 
             ? {} 
             : { top: `${position.top}px`, left: `${position.left}px` }
         }
       >
         {/* Tooltip arrow */}
-        {!(currentStep.id === "welcome" || currentStep.id === "completed") && (
+        {!(step.id === "welcome" || step.id === "completed") && (
           <div 
             className={cn(
               "absolute w-3 h-3 bg-background rotate-45 z-[1]",
@@ -143,9 +148,9 @@ export function OnboardingTooltip() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <CardTitle className="text-xl">{currentStep.title}</CardTitle>
+              <CardTitle className="text-xl">{step.title}</CardTitle>
               <Badge variant="outline" className="ml-2">
-                +{currentStep.points} pts
+                +{step.points} pts
               </Badge>
             </div>
             <Button variant="ghost" size="icon" onClick={skipOnboarding} className="h-8 w-8">
@@ -156,12 +161,12 @@ export function OnboardingTooltip() {
             <Progress value={progressPercentage} className="h-2" />
             <span className="text-xs text-muted-foreground">{progressPercentage}%</span>
           </div>
-          <CardDescription>{currentStep.description}</CardDescription>
+          <CardDescription>{step.description}</CardDescription>
         </CardHeader>
         
         <CardContent>
           <div className="flex flex-col">
-            {currentStep.id === "welcome" && (
+            {step.id === "welcome" && (
               <div className="flex flex-col items-center justify-center py-4">
                 <Rocket className="h-16 w-16 text-primary mb-2" />
                 <p className="text-center text-sm">
@@ -180,11 +185,11 @@ export function OnboardingTooltip() {
               </div>
             )}
             
-            {currentStep.id === "completed" && (
+            {step.id === "completed" && (
               <div className="flex flex-col items-center justify-center py-4">
                 <div className="relative">
                   <Award className="h-16 w-16 text-yellow-500" />
-                  <Badge className="absolute -top-2 -right-2 bg-primary">+{currentStep.points}</Badge>
+                  <Badge className="absolute -top-2 -right-2 bg-primary">+{step.points}</Badge>
                 </div>
                 <h3 className="text-lg font-semibold mt-2">Tutorial Complete!</h3>
                 <p className="text-center text-sm mt-1">
