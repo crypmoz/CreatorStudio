@@ -1,10 +1,48 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import cors from "cors";
+import { IS_PRODUCTION } from "./config/env";
+import { injectStorage } from "./middleware/auth.middleware";
 
 const app = express();
+
+// Apply security middleware for production
+if (IS_PRODUCTION) {
+  // Enable Helmet security headers
+  app.use(helmet());
+  
+  // Configure CORS
+  app.use(cors({
+    origin: process.env.CORS_ORIGIN || true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
+  }));
+} else {
+  // Looser CORS policy for development
+  app.use(cors());
+}
+
+// Rate limiting
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  message: "Too many requests from this IP, please try again after 15 minutes"
+});
+
+// Apply rate limiting to API routes
+app.use("/api", apiLimiter);
+
+// Body parsing middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Inject storage into request
+app.use(injectStorage);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -39,12 +77,44 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+  // Custom error handling middleware - more detailed and structured
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+    // Log errors in production, full stack in development
+    if (IS_PRODUCTION) {
+      console.error(`[ERROR] ${req.method} ${req.path}: ${err.message}`);
+    } else {
+      console.error(err);
+    }
 
-    res.status(status).json({ message });
-    throw err;
+    // Determine status code
+    const status = err.status || err.statusCode || 500;
+    
+    // Define the error response type
+    interface ErrorResponse {
+      status: number;
+      message: string;
+      errors?: any;
+      code?: string;
+      stack?: string;
+    }
+
+    // Create response object
+    const errorResponse: ErrorResponse = {
+      status: status,
+      message: err.message || "Internal Server Error",
+    };
+    
+    // Add optional properties if they exist
+    if (err.errors) errorResponse.errors = err.errors;
+    if (err.code) errorResponse.code = err.code;
+    
+    // Only include stack trace in development
+    if (!IS_PRODUCTION && err.stack) {
+      errorResponse.stack = err.stack;
+    }
+
+    // Send error response
+    res.status(status).json(errorResponse);
   });
 
   // importantly only setup vite in development and after

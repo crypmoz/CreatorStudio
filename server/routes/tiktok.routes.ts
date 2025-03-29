@@ -1,7 +1,9 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { isAuthenticated } from '../middleware/auth.middleware';
-import { TikTokService } from '../services/tiktok.service';
+import { requireTikTok } from '../middleware/api.middleware';
+import { TikTokService, TiktokConnection } from '../services/tiktok.service';
 import { storage } from '../storage';
+import { TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET } from '../config/env';
 
 const router = express.Router();
 const tiktokService = new TikTokService();
@@ -13,7 +15,7 @@ const stateTokens = new Map<string, { userId: number, expiry: Date }>();
  * Generate a TikTok auth URL for the current user
  * @route GET /api/tiktok/auth-url
  */
-router.get('/auth-url', isAuthenticated, async (req, res) => {
+router.get('/auth-url', isAuthenticated, requireTikTok, async (req, res) => {
   try {
     // Generate a random state token to prevent CSRF
     const state = Math.random().toString(36).substring(2, 15);
@@ -42,7 +44,7 @@ router.get('/auth-url', isAuthenticated, async (req, res) => {
  * Handle the TikTok OAuth callback
  * @route GET /api/tiktok/callback
  */
-router.get('/callback', async (req, res) => {
+router.get('/callback', requireTikTok, async (req, res) => {
   try {
     const { code, state, error, error_description } = req.query;
     
@@ -106,7 +108,7 @@ router.get('/callback', async (req, res) => {
  * Import TikTok videos for the authenticated user
  * @route POST /api/tiktok/import-videos
  */
-router.post('/import-videos', isAuthenticated, async (req, res) => {
+router.post('/import-videos', isAuthenticated, requireTikTok, async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
@@ -122,7 +124,8 @@ router.post('/import-videos', isAuthenticated, async (req, res) => {
     }
     
     // Check if token is still valid, refresh if needed
-    const tokenValid = await tiktokService.validateToken(user.tiktokConnection);
+    const tiktokConnection = user.tiktokConnection as TiktokConnection;
+    const tokenValid = await tiktokService.validateToken(tiktokConnection);
     if (!tokenValid) {
       // If we couldn't refresh, user needs to re-authenticate
       return res.status(401).json({ 
@@ -135,7 +138,7 @@ router.post('/import-videos', isAuthenticated, async (req, res) => {
     const { limit = 10 } = req.body;
     
     // Import videos
-    const videos = await tiktokService.importVideos(user.id, user.tiktokConnection, limit);
+    const videos = await tiktokService.importVideos(user.id, tiktokConnection, limit);
     
     res.json({ 
       message: 'Videos imported successfully',
@@ -152,7 +155,7 @@ router.post('/import-videos', isAuthenticated, async (req, res) => {
  * Get TikTok account connection status
  * @route GET /api/tiktok/connection-status
  */
-router.get('/connection-status', isAuthenticated, async (req, res) => {
+router.get('/connection-status', isAuthenticated, requireTikTok, async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
@@ -171,7 +174,8 @@ router.get('/connection-status', isAuthenticated, async (req, res) => {
     if (isConnected && user.tiktokConnection) {
       // Get profile data if connection exists
       try {
-        profile = await tiktokService.getUserProfile(user.tiktokConnection);
+        const tiktokConnection = user.tiktokConnection as TiktokConnection;
+        profile = await tiktokService.getUserProfile(tiktokConnection);
       } catch (error) {
         console.error('Error fetching TikTok profile:', error);
       }
@@ -179,7 +183,7 @@ router.get('/connection-status', isAuthenticated, async (req, res) => {
     
     res.json({
       connected: isConnected,
-      connectedSince: user.tiktokConnection?.connectedAt || null,
+      connectedSince: isConnected ? (user.tiktokConnection as TiktokConnection).connectedAt : null,
       profile
     });
   } catch (error) {
@@ -192,7 +196,7 @@ router.get('/connection-status', isAuthenticated, async (req, res) => {
  * Disconnect TikTok account
  * @route POST /api/tiktok/disconnect
  */
-router.post('/disconnect', isAuthenticated, async (req, res) => {
+router.post('/disconnect', isAuthenticated, requireTikTok, async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
@@ -213,6 +217,21 @@ router.post('/disconnect', isAuthenticated, async (req, res) => {
   } catch (error) {
     console.error('Error disconnecting TikTok account:', error);
     res.status(500).json({ message: 'Failed to disconnect TikTok account' });
+  }
+});
+
+/**
+ * @route GET /api/tiktok/validate-api
+ * @desc Validate if TikTok API keys are set
+ * @access Private
+ */
+router.get('/validate-api', isAuthenticated, async (req, res) => {
+  try {
+    const isAvailable = !!(TIKTOK_CLIENT_KEY && TIKTOK_CLIENT_SECRET);
+    res.json({ available: isAvailable });
+  } catch (error) {
+    console.error('Error checking TikTok API:', error);
+    res.status(500).json({ message: 'Failed to check TikTok API availability' });
   }
 });
 

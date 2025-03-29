@@ -2,7 +2,7 @@ import { config, OPENAI_API_KEY } from '../config/env';
 import { ContentIdea, ContentDraft } from '@shared/schema';
 
 /**
- * Service for AI operations using DeepSeek API
+ * Service for AI operations using OpenAI API
  */
 export class AIService {
   private apiKey: string;
@@ -10,7 +10,7 @@ export class AIService {
 
   constructor() {
     this.apiKey = config.api.openai || OPENAI_API_KEY;
-    this.baseUrl = 'https://api.deepseek.com';
+    this.baseUrl = 'https://api.openai.com/v1';
   }
 
   /**
@@ -45,7 +45,7 @@ export class AIService {
     `;
 
     try {
-      const response = await this.callDeepSeekAPI(prompt);
+      const response = await this.callOpenAIAPI(prompt);
       let parsedResponse;
       
       try {
@@ -58,7 +58,7 @@ export class AIService {
           parsedResponse = JSON.parse(response);
         }
       } catch (e) {
-        console.error('Failed to parse DeepSeek API response as JSON:', e);
+        console.error('Failed to parse OpenAI API response as JSON:', e);
         // Create a structured response from unstructured text as fallback
         parsedResponse = this.extractIdeasFromText(response, count);
       }
@@ -110,7 +110,7 @@ export class AIService {
     `;
 
     try {
-      const response = await this.callDeepSeekAPI(prompt);
+      const response = await this.callOpenAIAPI(prompt);
       let parsedResponse;
       
       try {
@@ -123,7 +123,7 @@ export class AIService {
           parsedResponse = JSON.parse(response);
         }
       } catch (e) {
-        console.error('Failed to parse DeepSeek API response as JSON:', e);
+        console.error('Failed to parse OpenAI API response as JSON:', e);
         // Create a structured response from unstructured text as fallback
         parsedResponse = this.extractDraftFromText(response);
       }
@@ -170,7 +170,7 @@ export class AIService {
     `;
 
     try {
-      const response = await this.callDeepSeekAPI(prompt);
+      const response = await this.callOpenAIAPI(prompt);
       let parsedResponse;
       
       try {
@@ -183,7 +183,7 @@ export class AIService {
           parsedResponse = JSON.parse(response);
         }
       } catch (e) {
-        console.error('Failed to parse DeepSeek API response as JSON:', e);
+        console.error('Failed to parse OpenAI API response as JSON:', e);
         // Extract prompts from text as fallback
         parsedResponse = response
           .split(/\\d+\\./)
@@ -241,7 +241,7 @@ export class AIService {
     `;
 
     try {
-      const response = await this.callDeepSeekAPI(prompt);
+      const response = await this.callOpenAIAPI(prompt);
       let parsedResponse;
       
       try {
@@ -254,7 +254,7 @@ export class AIService {
           parsedResponse = JSON.parse(response);
         }
       } catch (e) {
-        console.error('Failed to parse DeepSeek API response as JSON:', e);
+        console.error('Failed to parse OpenAI API response as JSON:', e);
         // Create a structured analysis from unstructured text
         parsedResponse = {
           viralityScore: 50,
@@ -273,13 +273,13 @@ export class AIService {
   }
 
   /**
-   * Private method to call the DeepSeek API
+   * Private method to call the OpenAI API
    * @param prompt The prompt to send to the API
    * @returns The API response text
    */
-  private async callDeepSeekAPI(prompt: string): Promise<string> {
+  private async callOpenAIAPI(prompt: string): Promise<string> {
     try {
-      // OpenAI API request instead of DeepSeek
+      // Call OpenAI API
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -287,7 +287,7 @@ export class AIService {
           'Authorization': `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
-          model: 'deepseek-chat',
+          model: 'gpt-3.5-turbo',
           messages: [
             {
               role: 'user',
@@ -301,13 +301,13 @@ export class AIService {
 
       if (!response.ok) {
         const error = await response.text();
-        throw new Error(`DeepSeek API error: ${response.status} ${error}`);
+        throw new Error(`OpenAI API error: ${response.status} ${error}`);
       }
 
       const data = await response.json();
       return data.choices[0].message.content;
     } catch (error) {
-      console.error('Error calling DeepSeek API:', error);
+      console.error('Error calling OpenAI API:', error);
       
       // If API fails, return simulated response for testing
       console.log('Returning simulated response for testing');

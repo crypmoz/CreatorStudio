@@ -1,9 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { aiService } from '../services/ai.service';
 import { isAuthenticated as authenticate } from '../middleware/auth.middleware';
+import { requireOpenAI } from '../middleware/api.middleware';
 import { storage } from '../storage';
 import { z } from 'zod';
 import { fromZodError } from 'zod-validation-error';
+import { OPENAI_API_KEY } from '../config/env';
 
 const router = Router();
 
@@ -39,7 +41,7 @@ const generateImagePromptsSchema = z.object({
  * @desc Generate content ideas using AI
  * @access Private
  */
-router.post('/generate-ideas', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/generate-ideas', authenticate, requireOpenAI, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -59,8 +61,12 @@ router.post('/generate-ideas', authenticate, async (req: Request, res: Response,
     // Save ideas to database
     const savedIdeas = await Promise.all(
       ideas.map(idea => storage.createContentIdea({
-        ...idea, 
+        title: idea.title || 'AI Generated Content Idea',
+        description: idea.description || 'AI generated description',
         userId: req.user!.id,
+        keyPoints: idea.keyPoints || '',
+        hashtags: idea.hashtags || '',
+        estimatedEngagement: idea.estimatedEngagement || 5,
         status: 'draft',
         createdAt: new Date(),
       }))
@@ -82,7 +88,7 @@ router.post('/generate-ideas', authenticate, async (req: Request, res: Response,
  * @desc Generate content draft from idea using AI
  * @access Private
  */
-router.post('/generate-draft', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/generate-draft', authenticate, requireOpenAI, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -107,9 +113,16 @@ router.post('/generate-draft', authenticate, async (req: Request, res: Response,
     
     // Save draft to database
     const savedDraft = await storage.createContentDraft({
-      ...draftData,
+      title: draftData.title || idea.title || 'Draft based on idea',
+      content: draftData.content || 'Draft content',
       userId: req.user.id,
       ideaId: idea.id,
+      hook: draftData.hook || '',
+      structure: draftData.structure || '',
+      audioSuggestions: draftData.audioSuggestions || '',
+      visualEffects: draftData.visualEffects || '',
+      callToAction: draftData.callToAction || '',
+      status: 'draft',
       createdAt: new Date(),
     });
     
@@ -132,7 +145,7 @@ router.post('/generate-draft', authenticate, async (req: Request, res: Response,
  * @desc Analyze video for virality potential
  * @access Private
  */
-router.post('/analyze-virality', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/analyze-virality', authenticate, requireOpenAI, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -160,7 +173,7 @@ router.post('/analyze-virality', authenticate, async (req: Request, res: Respons
  * @desc Generate image prompts for content
  * @access Private
  */
-router.post('/generate-image-prompts', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/generate-image-prompts', authenticate, requireOpenAI, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -191,6 +204,21 @@ router.post('/generate-image-prompts', authenticate, async (req: Request, res: R
     }
     
     next(error);
+  }
+});
+
+/**
+ * @route GET /api/ai/validate-openai
+ * @desc Validate if OpenAI API key is set
+ * @access Private
+ */
+router.get('/validate-openai', authenticate, async (req, res) => {
+  try {
+    const isAvailable = !!OPENAI_API_KEY;
+    res.json({ available: isAvailable });
+  } catch (error) {
+    console.error('Error checking OpenAI API:', error);
+    res.status(500).json({ error: 'Failed to check OpenAI API availability' });
   }
 });
 

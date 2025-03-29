@@ -53,7 +53,7 @@ type TiktokVideoInfo = {
 };
 
 // Type for TikTok connection stored in user model
-type TiktokConnection = {
+export type TiktokConnection = {
   accessToken: string;
   refreshToken: string;
   openId: string;
@@ -73,13 +73,14 @@ export class TikTokService {
     this.clientKey = TIKTOK_CLIENT_KEY || '';
     this.clientSecret = TIKTOK_CLIENT_SECRET || '';
     
-    // Set redirect URI based on environment
-    // In production, this would come from environment variables
+    // Set redirect URI based on environment with proper production support
+    // Use REPLIT_DOMAIN for production which is automatically set in Replit
     const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://your-production-url.com' 
-      : 'http://localhost:3000';
+      ? `https://${process.env.REPLIT_SLUG}.${process.env.REPLIT_DOMAIN || 'replit.app'}`
+      : 'http://localhost:5000'; // Changed to 5000 to match the Replit server port
     
-    this.redirectUri = `${baseUrl}/api/tiktok/callback`;
+    // Allow override with explicit REDIRECT_BASE_URL environment variable
+    this.redirectUri = `${process.env.REDIRECT_BASE_URL || baseUrl}/api/tiktok/callback`;
   }
 
   /**
@@ -186,18 +187,33 @@ export class TikTokService {
    */
   private async updateUserToken(openId: string, tokenData: TiktokTokenResponse): Promise<void> {
     try {
-      // Find user by TikTok openId
-      const users = Array.from(storage.users.values());
-      const user = users.find(u => u.tiktokConnection && u.tiktokConnection.openId === openId);
+      // Get all users and find one with matching TikTok openId
+      // Note: In a real DB implementation, we would use a query instead
+      const allUsers = await Promise.all(
+        Array.from({ length: 100 }, (_, i) => storage.getUser(i + 1)).filter(Boolean)
+      );
+      
+      const user = allUsers.find(u => 
+        u && 
+        u.tiktokConnection && 
+        typeof u.tiktokConnection === 'object' && 
+        'openId' in u.tiktokConnection && 
+        u.tiktokConnection.openId === openId
+      );
 
       if (user) {
+        // We need to type cast since tiktokConnection might be a JSON object
+        const currentConnection = user.tiktokConnection as TiktokConnection;
+        
         await storage.updateUser(user.id, {
           tiktokConnection: {
-            ...user.tiktokConnection,
+            openId: currentConnection.openId,
             accessToken: tokenData.access_token,
             refreshToken: tokenData.refresh_token,
             expiresAt: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
             refreshExpiresAt: new Date(Date.now() + tokenData.refresh_expires_in * 1000).toISOString(),
+            scope: tokenData.scope,
+            connectedAt: currentConnection.connectedAt || new Date().toISOString()
           }
         });
       }
@@ -259,19 +275,32 @@ export class TikTokService {
       const videos: TiktokVideoInfo[] = response.data.data.videos;
       const importedVideos = [];
 
+      // Get all existing videos for the user
+      const existingVideos = await storage.getVideosByUserId(userId);
+
       // Process each video and save to our system
       for (const video of videos) {
-        // Check if video already exists
-        const existingVideos = Array.from(storage.videos.values());
-        const exists = existingVideos.some(v => 
-          v.externalData && 
-          typeof v.externalData === 'object' && 
-          v.externalData.tiktok && 
-          v.externalData.tiktok.id === video.id
-        );
+        // Check if video already exists by comparing external IDs
+        const exists = existingVideos.some(v => {
+          if (!v.externalData) return false;
+          
+          try {
+            // Parse externalData if it's a string
+            const externalData = typeof v.externalData === 'string' 
+              ? JSON.parse(v.externalData) 
+              : v.externalData;
+              
+            return externalData && 
+                   externalData.tiktok && 
+                   externalData.tiktok.id === video.id;
+          } catch (e) {
+            return false;
+          }
+        });
 
         if (!exists) {
           // Create new video in our system
+          // Note: We create a valid InsertVideo object that matches our schema
           const newVideo = await storage.createVideo({
             userId,
             title: video.title || video.video_description.substring(0, 50),
@@ -282,9 +311,12 @@ export class TikTokService {
             likes: video.like_count,
             comments: video.comment_count,
             shares: video.share_count,
-            platform: 'tiktok',
-            status: 'published',
+            // Set hashtags to empty array as required by the schema
+            hashtags: [],
+            // Status and platform are stored in externalData
             externalData: {
+              platform: 'tiktok',
+              status: 'published',
               tiktok: {
                 id: video.id,
                 shareUrl: video.share_url,
