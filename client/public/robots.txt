@@ -1,0 +1,14 @@
+# CreatorAIDE robots.txt
+User-agent: *
+Allow: /
+
+# Disallow API routes
+Disallow: /api/
+
+# Disallow authentication paths
+Disallow: /login
+Disallow: /register
+Disallow: /reset-password
+
+# Sitemap
+Sitemap: https://creatoraide.com/sitemap.xml

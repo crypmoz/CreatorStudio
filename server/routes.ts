@@ -20,8 +20,66 @@ import schedulerRoutes from "./routes/scheduler.routes";
 import tiktokRoutes from "./routes/tiktok.routes";
 import { setupAuth } from "./auth";
 import express from "express";
+import { logger } from "./utils/logger";
+import { version as pkgVersion } from "../package.json";
+import os from "os";
+
+// Helper functions for status endpoint
+function formatBytes(bytes: number): string {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let i = 0;
+  
+  while (bytes >= 1024 && i < units.length - 1) {
+    bytes /= 1024;
+    i++;
+  }
+  
+  return `${bytes.toFixed(2)} ${units[i]}`;
+}
+
+function formatUptime(uptime: number): string {
+  const days = Math.floor(uptime / 86400);
+  const hours = Math.floor((uptime % 86400) / 3600);
+  const minutes = Math.floor((uptime % 3600) / 60);
+  const seconds = Math.floor(uptime % 60);
+  
+  return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check and status endpoints for monitoring
+  app.get("/api/health", (req, res) => {
+    // Basic health check for load balancers and monitoring services
+    res.status(200).json({ status: "ok" });
+  });
+  
+  app.get("/api/status", (req, res) => {
+    // Detailed status endpoint for more advanced monitoring
+    const uptime = process.uptime();
+    const memoryUsage = process.memoryUsage();
+    
+    res.status(200).json({
+      status: "ok",
+      version: pkgVersion,
+      uptime: uptime,
+      uptime_formatted: formatUptime(uptime),
+      timestamp: new Date().toISOString(),
+      memory: {
+        rss: formatBytes(memoryUsage.rss),
+        heapTotal: formatBytes(memoryUsage.heapTotal),
+        heapUsed: formatBytes(memoryUsage.heapUsed),
+        external: formatBytes(memoryUsage.external),
+      },
+      system: {
+        platform: process.platform,
+        arch: process.arch,
+        cpus: os.cpus().length,
+        loadavg: os.loadavg(),
+        freemem: formatBytes(os.freemem()),
+        totalmem: formatBytes(os.totalmem()),
+      }
+    });
+  });
   // Set up authentication
   setupAuth(app);
   

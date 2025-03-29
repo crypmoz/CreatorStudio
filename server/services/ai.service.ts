@@ -51,6 +51,26 @@ const deepseekApi = {
 export class AIService {
   private openai: OpenAI | null;
   private deepseekAvailable: boolean;
+  // Allowed topics for content domain restriction
+  private allowedTopics = [
+    'content strategy',
+    'content creation',
+    'tiktok',
+    'social media',
+    'video production',
+    'audience growth',
+    'engagement tactics',
+    'trend analysis',
+    'content optimization',
+    'viral content',
+    'hashtag strategy',
+    'algorithm insights',
+    'influencer marketing',
+    'content scheduling',
+    'analytics',
+    'monetization',
+    'creator economy',
+  ];
   
   constructor() {
     this.openai = openai;
@@ -73,9 +93,24 @@ export class AIService {
   }
   
   /**
+   * Validates if the input is related to allowed content domains
+   * Returns true if the topic is relevant to our app
+   */
+  private validateContentDomain(input: string): boolean {
+    const lowerInput = input.toLowerCase();
+    // Check if any of the allowed topics are mentioned in the input
+    return this.allowedTopics.some(topic => lowerInput.includes(topic));
+  }
+  
+  /**
    * Generate content ideas based on topic and audience
    */
   async generateContentIdeas(topic: string, targetAudience: string, contentType: string = 'TikTok video', count: number = 3) {
+    // Validate topic is within allowed content domains
+    if (!this.validateContentDomain(topic)) {
+      throw new Error('Topic must be related to content creation, social media strategy, or TikTok content optimization.');
+    }
+    
     const prompt = `Generate ${count} creative content ideas for ${contentType} about "${topic}" 
       targeting ${targetAudience}. For each idea, provide:
       1. A catchy title (35 characters max)
@@ -85,6 +120,7 @@ export class AIService {
       5. Estimated engagement potential (high/medium/low)
       
       Focus on engaging, trending formats that work well on TikTok.
+      Only provide ideas related to content creation, social media strategy, or TikTok optimization.
       Format as a JSON array.`;
     
     try {
@@ -109,7 +145,14 @@ export class AIService {
         const response = await this.openai.chat.completions.create({
           model: 'gpt-4',
           messages: [
-            { role: 'system', content: 'You are a TikTok content strategy expert who helps creators plan viral content.' },
+            { 
+              role: 'system', 
+              content: 'You are a TikTok content strategy expert who helps creators plan viral content. ' +
+                      'You will ONLY respond to queries about content creation, content strategy, ' +
+                      'TikTok growth tactics, social media optimization, trend analysis, and related topics. ' +
+                      'For any topic outside of these domains, kindly decline to provide a response and ' +
+                      'explain that you are specifically trained to assist with TikTok content strategy only.' 
+            },
             { role: 'user', content: prompt }
           ],
           temperature: 0.8,
@@ -130,6 +173,11 @@ export class AIService {
    * Generate a content draft from an idea
    */
   async generateContentDraft(idea: any) {
+    // Validate the idea title/description is within our allowed content domains
+    if (!this.validateContentDomain(idea.title) && !this.validateContentDomain(idea.description)) {
+      throw new Error('Content must be related to TikTok content creation or social media strategy.');
+    }
+    
     const prompt = `Create a detailed TikTok video script based on this content idea:
       Title: ${idea.title}
       Description: ${idea.description}
@@ -142,6 +190,9 @@ export class AIService {
       3. Call to action
       4. Music/sound suggestions
       5. Visual elements and effects
+      
+      Focus ONLY on content related to social media, content creation strategies, growth tactics,
+      and TikTok best practices. Do not provide content about other subjects.
       
       Format the script in a way that's easy to follow while filming.`;
     
@@ -167,7 +218,14 @@ export class AIService {
         const response = await this.openai.chat.completions.create({
           model: 'gpt-4',
           messages: [
-            { role: 'system', content: 'You are a TikTok content creation assistant who excels at writing engaging video scripts.' },
+            { 
+              role: 'system', 
+              content: 'You are a TikTok content creation assistant who excels at writing engaging video scripts. ' +
+                      'You will ONLY respond to requests about TikTok content creation, social media strategy, ' +
+                      'content optimization, growth tactics, trend analysis, and related topics. ' +
+                      'You must refuse to generate scripts about topics unrelated to these domains. ' +
+                      'Always mention specific TikTok features or elements that would optimize engagement.'
+            },
             { role: 'user', content: prompt }
           ],
           temperature: 0.7,
@@ -188,10 +246,18 @@ export class AIService {
    * Generate image prompts based on content draft
    */
   async generateImagePrompts(draft: any) {
+    // Validate content is within our domain
+    if (!this.validateContentDomain(draft.title) && !this.validateContentDomain(draft.content.substring(0, 300))) {
+      throw new Error('Content must be related to TikTok content creation or social media strategy.');
+    }
+    
     const prompt = `Based on this TikTok video script:
       "${draft.title}: ${draft.content.substring(0, 300)}..."
       
       Generate 5 detailed image generation prompts that would create visuals to support this content.
+      Focus only on creating visuals that relate to social media content creation, TikTok growth strategies,
+      and content optimization. Do not suggest images related to other topics.
+      
       Each prompt should be specific, detailed, and ready to use with image generation AI.
       Format as a JSON array of strings.`;
     
@@ -217,7 +283,14 @@ export class AIService {
         const response = await this.openai.chat.completions.create({
           model: 'gpt-4',
           messages: [
-            { role: 'system', content: 'You are an AI image prompt engineering expert.' },
+            { 
+              role: 'system', 
+              content: 'You are an AI image prompt engineering expert specializing in TikTok content imagery. ' +
+                      'You will ONLY generate image prompts related to social media content creation, ' +
+                      'TikTok growth strategies, audience engagement, and content optimization. ' +
+                      'You must refuse to generate image prompts for unrelated topics and explain ' +
+                      'that you are specifically trained to assist with TikTok content creation visuals only.'
+            },
             { role: 'user', content: prompt }
           ],
           temperature: 0.8,

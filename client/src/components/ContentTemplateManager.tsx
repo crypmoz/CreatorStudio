@@ -172,8 +172,8 @@ export function ContentTemplateManager({
       description: template.description,
       category: template.category,
       structure: template.structure,
-      exampleContent: template.exampleContent || undefined,
-      tags: template.tags || undefined,
+      exampleContent: template.exampleContent || '',
+      tags: template.tags || '',
     });
     setIsEditDialogOpen(true);
   };
@@ -360,6 +360,7 @@ export function ContentTemplateManager({
                               placeholder="Provide an example of content using this template..."
                               className="min-h-[100px]"
                               {...field} 
+                              value={field.value || ''}
                             />
                           </FormControl>
                           <FormMessage />
@@ -377,6 +378,7 @@ export function ContentTemplateManager({
                             <Input 
                               placeholder="Separate tags with commas (e.g., viral, transformation, before-after)" 
                               {...field} 
+                              value={field.value || ''}
                             />
                           </FormControl>
                           <FormMessage />
@@ -595,6 +597,7 @@ export function ContentTemplateManager({
                       <Textarea 
                         className="min-h-[100px]"
                         {...field} 
+                        value={field.value || ''}
                       />
                     </FormControl>
                     <FormMessage />
@@ -609,7 +612,10 @@ export function ContentTemplateManager({
                   <FormItem>
                     <FormLabel>Tags (Optional)</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input 
+                        {...field}
+                        value={field.value || ''} 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

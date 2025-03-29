@@ -3,6 +3,8 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { IS_PRODUCTION } from "./config/env";
 import { securityMiddleware, validateContentType, sanitizeInput } from "./middleware/security";
+import { requestLogger } from "./middleware/request-logger";
+import { logger } from "./utils/logger";
 
 const app = express();
 
@@ -18,46 +20,32 @@ app.use(sanitizeInput);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
-    }
-  });
-
-  next();
-});
+// Add request logger middleware
+app.use(requestLogger);
 
 (async () => {
   const server = await registerRoutes(app);
 
   // Custom error handling middleware - more detailed and structured
   app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
-    // Log errors in production, full stack in development
+    // Log errors with structured logger
+    const errorMetadata = {
+      method: req.method,
+      path: req.path,
+      statusCode: err.status || err.statusCode || 500,
+      errorName: err.name,
+      errorCode: err.code
+    };
+    
     if (IS_PRODUCTION) {
-      console.error(`[ERROR] ${req.method} ${req.path}: ${err.message}`);
+      // In production, log the error message and metadata but not the stack trace
+      logger.error(`${req.method} ${req.path}: ${err.message}`, errorMetadata);
     } else {
-      console.error(err);
+      // In development, include stack trace in logs
+      logger.error(`${req.method} ${req.path}: ${err.message}`, {
+        ...errorMetadata,
+        stack: err.stack
+      });
     }
 
     // Determine status code
@@ -109,6 +97,9 @@ app.use((req, res, next) => {
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
-    log(`serving on port ${port}`);
+    logger.info(`CreatorAIDE API server running on port ${port}`, {
+      environment: process.env.NODE_ENV || 'development',
+      port: port
+    });
   });
 })();
