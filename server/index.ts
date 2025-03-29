@@ -2,15 +2,17 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { IS_PRODUCTION } from "./config/env";
-import { setupSecurity } from "./middleware/security";
+import { securityMiddleware, validateContentType, sanitizeInput } from "./middleware/security";
 
 const app = express();
 
 // Trust proxies (needed for rate limiting behind proxies)
 app.set('trust proxy', 1);
 
-// Apply enhanced security middleware
-setupSecurity(app);
+// Apply enhanced security middleware - securityMiddleware is an array of middleware functions
+securityMiddleware.forEach(middleware => app.use(middleware));
+app.use(validateContentType);
+app.use(sanitizeInput);
 
 // Body parsing middleware
 app.use(express.json());

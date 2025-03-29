@@ -1,3 +1,4 @@
+import React from 'react';
 import { Helmet } from 'react-helmet';
 
 interface SEOHeadProps {
@@ -6,48 +7,58 @@ interface SEOHeadProps {
   keywords?: string;
   ogImage?: string;
   ogType?: string;
-  canonicalUrl?: string;
-  noIndex?: boolean;
+  twitterCard?: string;
 }
 
-export function SEOHead({
-  title = 'CreatorAIDE - AI-Powered TikTok Content Optimization Platform',
-  description = 'Optimize your TikTok content strategy with AI-powered analytics, virality predictions, and content creation tools',
-  keywords = 'TikTok, Content Creation, Creator Tools, Social Media Analytics, Virality Predictor',
-  ogImage = '/og-image.jpg',
-  ogType = 'website',
-  canonicalUrl,
-  noIndex = false
-}: SEOHeadProps) {
-  const siteName = 'CreatorAIDE';
-  const fullTitle = title.includes(siteName) ? title : `${title} | ${siteName}`;
+export const SEOHead = ({
+  title = "CreatorAIDE | AI-Powered TikTok Content Optimization",
+  description = "Optimize your TikTok content with AI-powered insights, analytics, and virality predictions. Grow your audience and boost engagement.",
+  keywords = "tiktok, content creation, ai, analytics, virality, creator, social media, audience growth",
+  ogImage = "/og-image.jpg",
+  ogType = "website",
+  twitterCard = "summary_large_image",
+}: SEOHeadProps) => {
+  // Generate canonical URL
+  const canonicalUrl = typeof window !== 'undefined' ? window.location.href : '';
   
   return (
     <Helmet>
-      {/* Basic meta tags */}
-      <title>{fullTitle}</title>
+      {/* Basic Meta Tags */}
+      <title>{title}</title>
       <meta name="description" content={description} />
       <meta name="keywords" content={keywords} />
+      <link rel="canonical" href={canonicalUrl} />
       
-      {/* Open Graph tags */}
-      <meta property="og:title" content={fullTitle} />
+      {/* Open Graph Meta Tags */}
+      <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
       <meta property="og:image" content={ogImage} />
+      <meta property="og:url" content={canonicalUrl} />
       <meta property="og:type" content={ogType} />
-      <meta property="og:site_name" content={siteName} />
-      {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
+      <meta property="og:site_name" content="CreatorAIDE" />
       
-      {/* Twitter card tags */}
-      <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content={fullTitle} />
+      {/* Twitter Card Meta Tags */}
+      <meta name="twitter:card" content={twitterCard} />
+      <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={ogImage} />
       
-      {/* Canonical URL */}
-      {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+      {/* Additional Meta Tags */}
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />
+      <meta name="theme-color" content="#FF0050" /> {/* TikTok brand color */}
       
-      {/* No index directive if needed */}
-      {noIndex && <meta name="robots" content="noindex, nofollow" />}
+      {/* iOS Meta Tags */}
+      <meta name="apple-mobile-web-app-capable" content="yes" />
+      <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      <meta name="apple-mobile-web-app-title" content="CreatorAIDE" />
+      
+      {/* PWA Tags */}
+      <link rel="manifest" href="/manifest.json" />
+      <link rel="icon" href="/favicon.ico" />
+      <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     </Helmet>
   );
-}
+};
+
+export default SEOHead;

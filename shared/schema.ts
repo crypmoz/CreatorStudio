@@ -68,8 +68,10 @@ export const contentTemplates = pgTable("content_templates", {
   userId: integer("user_id").references(() => users.id),
   title: text("title").notNull(),
   description: text("description").notNull(),
-  content: text("content").notNull(),
+  structure: text("structure").notNull(), // Format, timing and sections
   category: text("category").notNull(),
+  exampleContent: text("example_content").default(""),
+  tags: text("tags").default(""),
   thumbnailUrl: text("thumbnail_url"),
   avgViews: integer("avg_views").default(0),
   popularity: text("popularity").default("normal"),
