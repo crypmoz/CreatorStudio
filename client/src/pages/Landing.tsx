@@ -56,13 +56,14 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 bg-gradient-to-b from-background to-gray-50 dark:to-gray-900">
-        <div className="container mx-auto px-4">
+      <section className="py-20 bg-gradient-to-b from-black to-gray-900 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,105,180,0.15),transparent_25%),radial-gradient(circle_at_70%_60%,rgba(255,255,0,0.1),transparent_25%)]"></div>
+        <div className="container mx-auto px-4 relative z-10">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
+              <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight text-white">
                 Elevate Your TikTok Content with
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-500 via-primary to-cyan-400"> AI-Powered Tools</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-primary to-purple-600"> AI-Powered Tools</span>
               </h1>
               <p className="text-xl text-muted-foreground mb-8">
                 The all-in-one platform for TikTok creators to optimize content, 
@@ -89,11 +90,12 @@ export default function Landing() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-background">
-        <div className="container mx-auto px-4">
+      <section className="py-20 bg-black relative">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(205,5,153,0.05),transparent_50%)]"></div>
+        <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">All-in-One Creator Platform</h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+            <h2 className="text-3xl font-bold mb-4 text-white">All-in-One Creator Platform</h2>
+            <p className="text-xl text-gray-400 max-w-3xl mx-auto">
               Our comprehensive suite of tools helps you create, optimize, and monetize your TikTok content.
             </p>
           </div>
@@ -134,38 +136,67 @@ export default function Landing() {
       </section>
 
       {/* Analytics Preview Section */}
-      <section className="py-20 bg-gray-50 dark:bg-gray-900">
-        <div className="container mx-auto px-4">
+      <section className="py-20 bg-black relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_40%,rgba(255,105,180,0.08),transparent_30%)]"></div>
+        <div className="container mx-auto px-4 relative z-10">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl font-bold mb-6">Data-Driven Content Optimization</h2>
-              <p className="text-lg text-muted-foreground mb-6">
+              <h2 className="text-3xl font-bold mb-6 text-white">Data-Driven Content Optimization</h2>
+              <p className="text-lg text-gray-400 mb-6">
                 Our powerful analytics dashboard provides deep insights into your content performance, 
                 audience engagement, and growth opportunities.
               </p>
-              <ul className="space-y-4">
+              <ul className="space-y-4 text-gray-300">
                 <FeatureItem text="Virality prediction score for each content piece" />
                 <FeatureItem text="Audience demographic breakdown and behavior analysis" />
                 <FeatureItem text="Engagement metrics with trend visualization" />
                 <FeatureItem text="Revenue tracking and monetization opportunities" />
               </ul>
-              <Button className="mt-8" onClick={handleGetStarted}>
+              <Button 
+                className="mt-8 bg-gradient-to-r from-purple-600 to-primary hover:from-purple-500 hover:to-primary/90 text-white shadow-md" 
+                onClick={handleGetStarted}
+              >
                 Try Analytics Tools <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
-            <div className="bg-gray-200 dark:bg-gray-800 rounded-lg aspect-video flex items-center justify-center">
-              <BarChart4 className="h-16 w-16 text-primary/50" />
+            <div className="bg-black rounded-xl border border-gray-800 aspect-video p-4 relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-purple-600/5"></div>
+              <div className="flex items-center justify-center h-full relative z-10">
+                <div className="grid grid-cols-2 gap-4 w-full max-w-md">
+                  <div className="bg-gray-900/70 p-4 rounded-lg border border-gray-800 flex flex-col items-center">
+                    <BarChart4 className="h-8 w-8 text-primary mb-2" />
+                    <div className="text-xs text-gray-400">Engagement</div>
+                    <div className="text-lg font-bold text-white">+42%</div>
+                  </div>
+                  <div className="bg-gray-900/70 p-4 rounded-lg border border-gray-800 flex flex-col items-center">
+                    <TrendingUp className="h-8 w-8 text-primary mb-2" />
+                    <div className="text-xs text-gray-400">Growth</div>
+                    <div className="text-lg font-bold text-white">+127%</div>
+                  </div>
+                  <div className="bg-gray-900/70 p-4 rounded-lg border border-gray-800 flex flex-col items-center">
+                    <Users className="h-8 w-8 text-primary mb-2" />
+                    <div className="text-xs text-gray-400">Followers</div>
+                    <div className="text-lg font-bold text-white">12.4K</div>
+                  </div>
+                  <div className="bg-gray-900/70 p-4 rounded-lg border border-gray-800 flex flex-col items-center">
+                    <DollarSign className="h-8 w-8 text-primary mb-2" />
+                    <div className="text-xs text-gray-400">Revenue</div>
+                    <div className="text-lg font-bold text-white">$2.3K</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-20 bg-background">
-        <div className="container mx-auto px-4">
+      <section className="py-20 bg-black relative">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,105,180,0.1),transparent_25%),radial-gradient(circle_at_20%_80%,rgba(255,255,0,0.05),transparent_25%)]"></div>
+        <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">Trusted by Creators</h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+            <h2 className="text-3xl font-bold mb-4 text-white">Trusted by Creators</h2>
+            <p className="text-xl text-gray-400 max-w-3xl mx-auto">
               Hear what content creators are saying about how CreatorAIDE has transformed their TikTok strategy.
             </p>
           </div>
@@ -191,60 +222,67 @@ export default function Landing() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gray-50 dark:bg-gray-900">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Transform Your Content Strategy?</h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
-            Join thousands of creators who are leveraging AI to grow their audience and maximize engagement.
-          </p>
-          <Button size="lg" onClick={handleGetStarted}>
-            Get Started Free
-          </Button>
-          <p className="mt-4 text-sm text-muted-foreground">
-            No credit card required. Start with our free plan and upgrade anytime.
-          </p>
+      <section className="py-20 bg-black relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(255,105,180,0.3),transparent_40%)]"></div>
+        <div className="container mx-auto px-4 text-center relative z-10">
+          <div className="max-w-3xl mx-auto bg-gradient-to-r from-purple-900/20 to-primary/20 rounded-xl p-10 border border-gray-800 shadow-2xl">
+            <h2 className="text-3xl font-bold mb-4 text-white">Ready to Transform Your Content Strategy?</h2>
+            <p className="text-xl text-gray-300 mx-auto mb-8">
+              Join thousands of creators who are leveraging AI to grow their audience and maximize engagement.
+            </p>
+            <Button 
+              size="lg" 
+              onClick={handleGetStarted} 
+              className="bg-gradient-to-r from-pink-600 to-primary hover:from-pink-500 hover:to-primary/90 text-white font-bold shadow-lg"
+            >
+              Get Started Free
+            </Button>
+            <p className="mt-4 text-sm text-gray-400">
+              No credit card required. Start with our free plan and upgrade anytime.
+            </p>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-12 mt-auto">
+      <footer className="border-t border-gray-800 py-12 mt-auto bg-black">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div>
-              <h3 className="font-bold mb-4">CreatorAIDE</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="font-bold mb-4 text-white">CreatorAIDE</h3>
+              <p className="text-sm text-gray-400">
                 The AI-powered platform for TikTok creators to optimize content and grow their audience.
               </p>
             </div>
             <div>
-              <h4 className="font-semibold mb-3">Product</h4>
+              <h4 className="font-semibold mb-3 text-white">Product</h4>
               <ul className="space-y-2 text-sm">
-                <li><Link href="/pricing"><span className="text-muted-foreground hover:text-foreground cursor-pointer">Pricing</span></Link></li>
-                <li><Link href="/help-center"><span className="text-muted-foreground hover:text-foreground cursor-pointer">Help Center</span></Link></li>
-                <li><span className="text-muted-foreground hover:text-foreground cursor-pointer">Updates</span></li>
-                <li><span className="text-muted-foreground hover:text-foreground cursor-pointer">Roadmap</span></li>
+                <li><Link href="/pricing"><span className="text-gray-400 hover:text-primary transition-colors cursor-pointer">Pricing</span></Link></li>
+                <li><Link href="/help-center"><span className="text-gray-400 hover:text-primary transition-colors cursor-pointer">Help Center</span></Link></li>
+                <li><span className="text-gray-400 hover:text-primary transition-colors cursor-pointer">Updates</span></li>
+                <li><span className="text-gray-400 hover:text-primary transition-colors cursor-pointer">Roadmap</span></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-3">Resources</h4>
+              <h4 className="font-semibold mb-3 text-white">Resources</h4>
               <ul className="space-y-2 text-sm">
-                <li><span className="text-muted-foreground hover:text-foreground cursor-pointer">Blog</span></li>
-                <li><span className="text-muted-foreground hover:text-foreground cursor-pointer">Community</span></li>
-                <li><span className="text-muted-foreground hover:text-foreground cursor-pointer">Tutorials</span></li>
-                <li><span className="text-muted-foreground hover:text-foreground cursor-pointer">Creator Stories</span></li>
+                <li><span className="text-gray-400 hover:text-primary transition-colors cursor-pointer">Blog</span></li>
+                <li><span className="text-gray-400 hover:text-primary transition-colors cursor-pointer">Community</span></li>
+                <li><span className="text-gray-400 hover:text-primary transition-colors cursor-pointer">Tutorials</span></li>
+                <li><span className="text-gray-400 hover:text-primary transition-colors cursor-pointer">Creator Stories</span></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-3">Company</h4>
+              <h4 className="font-semibold mb-3 text-white">Company</h4>
               <ul className="space-y-2 text-sm">
-                <li><span className="text-muted-foreground hover:text-foreground cursor-pointer">About Us</span></li>
-                <li><span className="text-muted-foreground hover:text-foreground cursor-pointer">Careers</span></li>
-                <li><Link href="/terms-of-use"><span className="text-muted-foreground hover:text-foreground cursor-pointer">Terms of Use</span></Link></li>
-                <li><Link href="/privacy-policy"><span className="text-muted-foreground hover:text-foreground cursor-pointer">Privacy Policy</span></Link></li>
+                <li><span className="text-gray-400 hover:text-primary transition-colors cursor-pointer">About Us</span></li>
+                <li><span className="text-gray-400 hover:text-primary transition-colors cursor-pointer">Careers</span></li>
+                <li><Link href="/terms-of-use"><span className="text-gray-400 hover:text-primary transition-colors cursor-pointer">Terms of Use</span></Link></li>
+                <li><Link href="/privacy-policy"><span className="text-gray-400 hover:text-primary transition-colors cursor-pointer">Privacy Policy</span></Link></li>
               </ul>
             </div>
           </div>
-          <div className="mt-12 pt-8 border-t text-center text-sm text-muted-foreground">
+          <div className="mt-12 pt-8 border-t border-gray-800 text-center text-sm text-gray-500">
             &copy; {new Date().getFullYear()} CreatorAIDE. All rights reserved.
           </div>
         </div>
@@ -254,12 +292,13 @@ export default function Landing() {
 }
 
 const FeatureCard = ({ icon, title, description }) => (
-  <div className="bg-white dark:bg-gray-900 p-6 rounded-xl border-2 hover:border-primary transition-all duration-300 shadow-sm hover:shadow-md relative overflow-hidden group">
-    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 via-primary/5 to-cyan-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+  <div className="bg-black dark:bg-gray-900 p-6 rounded-xl border border-gray-800 hover:border-primary transition-all duration-300 shadow-sm hover:shadow-lg relative overflow-hidden group">
+    <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-purple-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+    <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-purple-600/20 rounded-xl blur opacity-0 group-hover:opacity-70 transition-all duration-500 group-hover:duration-200"></div>
     <div className="relative z-10">
-      <div className="mb-4 text-primary">{icon}</div>
-      <h3 className="text-xl font-semibold mb-2">{title}</h3>
-      <p className="text-muted-foreground">{description}</p>
+      <div className="mb-4 text-primary group-hover:text-white group-hover:scale-110 transform transition-all duration-300">{icon}</div>
+      <h3 className="text-xl font-semibold mb-2 text-white">{title}</h3>
+      <p className="text-gray-400">{description}</p>
     </div>
   </div>
 );
@@ -272,11 +311,13 @@ const FeatureItem = ({ text }) => (
 );
 
 const TestimonialCard = ({ content, author, role }) => (
-  <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg border">
-    <p className="mb-4 italic">&ldquo;{content}&rdquo;</p>
-    <div>
-      <p className="font-semibold">{author}</p>
-      <p className="text-sm text-muted-foreground">{role}</p>
+  <div className="bg-black p-6 rounded-lg border border-gray-800 relative overflow-hidden">
+    <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary/20 rounded-full blur-2xl"></div>
+    <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-purple-600/20 rounded-full blur-2xl"></div>
+    <p className="mb-5 italic text-gray-300 relative z-10">&ldquo;{content}&rdquo;</p>
+    <div className="relative z-10">
+      <p className="font-semibold text-white">{author}</p>
+      <p className="text-sm text-gray-400">{role}</p>
     </div>
   </div>
 );
