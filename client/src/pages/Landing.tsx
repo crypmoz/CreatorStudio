@@ -62,7 +62,7 @@ export default function Landing() {
             <div>
               <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
                 Elevate Your TikTok Content with
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-600"> AI-Powered Tools</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-500 via-primary to-cyan-400"> AI-Powered Tools</span>
               </h1>
               <p className="text-xl text-muted-foreground mb-8">
                 The all-in-one platform for TikTok creators to optimize content, 
@@ -254,10 +254,13 @@ export default function Landing() {
 }
 
 const FeatureCard = ({ icon, title, description }) => (
-  <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg border hover:border-primary transition-colors">
-    <div className="mb-4">{icon}</div>
-    <h3 className="text-xl font-semibold mb-2">{title}</h3>
-    <p className="text-muted-foreground">{description}</p>
+  <div className="bg-white dark:bg-gray-900 p-6 rounded-xl border-2 hover:border-primary transition-all duration-300 shadow-sm hover:shadow-md relative overflow-hidden group">
+    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 via-primary/5 to-cyan-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+    <div className="relative z-10">
+      <div className="mb-4 text-primary">{icon}</div>
+      <h3 className="text-xl font-semibold mb-2">{title}</h3>
+      <p className="text-muted-foreground">{description}</p>
+    </div>
   </div>
 );
 
