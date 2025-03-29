@@ -30,10 +30,6 @@ export const users = pgTable("users", {
     language: "en"
   }),
   socialProfiles: jsonb("social_profiles").default({
-    instagram: null,
-    youtube: null,
-    twitter: null,
-    facebook: null,
     tiktok: null
   }),
   contentCreatorInfo: jsonb("content_creator_info").default({
@@ -87,7 +83,7 @@ export const scheduledPosts = pgTable("scheduled_posts", {
   contentDraftId: integer("content_draft_id").references(() => contentDrafts.id),
   mediaFileId: integer("media_file_id").references(() => mediaFiles.id),
   thumbnailUrl: text("thumbnail_url"),
-  platforms: text("platforms").array(),
+  platforms: text("platforms").array().default(["tiktok"]),
   scheduledFor: timestamp("scheduled_for").notNull(),
   timeZone: text("time_zone").default("UTC"),
   status: text("status").default("pending"), // pending, published, failed

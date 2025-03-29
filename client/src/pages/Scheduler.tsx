@@ -339,20 +339,12 @@ const Scheduler = () => {
   
   // Platform options
   const platformOptions = [
-    { value: "tiktok", label: "TikTok", icon: <SiTiktok className="mr-2" /> },
-    { value: "instagram", label: "Instagram", icon: <SiInstagram className="mr-2" /> },
-    { value: "facebook", label: "Facebook", icon: <SiFacebook className="mr-2" /> },
-    { value: "twitter", label: "Twitter", icon: <SiX className="mr-2" /> },
-    { value: "youtube", label: "YouTube", icon: <SiYoutube className="mr-2" /> }
+    { value: "tiktok", label: "TikTok", icon: <SiTiktok className="mr-2" /> }
   ];
   
   const getPlatformIcon = (platform: string) => {
     switch (platform.toLowerCase()) {
       case 'tiktok': return <SiTiktok className="text-black" />;
-      case 'instagram': return <SiInstagram className="text-[#E4405F]" />;
-      case 'facebook': return <SiFacebook className="text-[#1877F2]" />;
-      case 'twitter': return <SiX className="text-black" />;
-      case 'youtube': return <SiYoutube className="text-[#FF0000]" />;
       default: return null;
     }
   };
