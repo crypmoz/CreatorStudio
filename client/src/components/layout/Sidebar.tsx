@@ -86,9 +86,9 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
                 )}
               </div>
               <div className="mt-3">
-                <button className="text-xs text-[#FF0050] flex items-center hover:underline">
+                <Link href="/account-settings" className="text-xs text-[#FF0050] flex items-center hover:underline">
                   <RiSettingsLine className="mr-1" /> Account Settings
-                </button>
+                </Link>
               </div>
             </div>
           </div>

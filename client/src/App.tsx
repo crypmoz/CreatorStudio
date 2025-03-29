@@ -15,6 +15,7 @@ import CommunityManager from "@/pages/CommunityManager";
 import Monetization from "@/pages/Monetization";
 import AudienceGrowth from "@/pages/AudienceGrowth";
 import AIAgent from "@/pages/AIAgent";
+import AccountSettings from "@/pages/AccountSettings";
 import AuthPage from "@/pages/auth-page";
 import MainLayout from "@/components/layout/MainLayout";
 
@@ -37,6 +38,7 @@ function Router() {
       <ProtectedRoute path="/monetization" component={Monetization} />
       <ProtectedRoute path="/audience-growth" component={AudienceGrowth} />
       <ProtectedRoute path="/ai-agent" component={AIAgent} />
+      <ProtectedRoute path="/account-settings" component={AccountSettings} />
       
       {/* Fallback to 404 */}
       <Route component={NotFound} />

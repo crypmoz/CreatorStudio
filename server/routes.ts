@@ -59,6 +59,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Update user
+  app.patch('/api/users/:id', async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: 'Invalid ID format' });
+    
+    // Check if user exists
+    const user = await storage.getUser(id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    try {
+      // Add updateUser method to the storage
+      const updatedUser = await storage.updateUser(id, req.body);
+      if (!updatedUser) return res.status(404).json({ message: 'User not found' });
+      
+      // Don't return the password in the response
+      const { password, ...userWithoutPassword } = updatedUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Invalid user data', errors: error.errors });
+      }
+      res.status(500).json({ message: 'Failed to update user' });
+    }
+  });
+  
   // Video routes
   app.get('/api/videos/:id', async (req, res) => {
     const id = parseInt(req.params.id);
