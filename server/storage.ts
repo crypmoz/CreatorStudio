@@ -590,11 +590,11 @@ export class MemStorage implements IStorage {
   
   // Initialize with demo data
   private initializeDemoData() {
-    // Create a demo user with hashed password ("password" hashed using scrypt)
+    // Create a demo user with hashed password ("password123" hashed using scrypt)
     const user: User = {
       id: this.currentUserId++,
       username: "demo",
-      password: "7e37f68170e6ae7080c28a07686bea57cc9e8e5052d887a282d2b3985718e473fa40f0faf31f14899df2fdf7e949b56d2bc498814922745d1d85ec718993371f.9dfc3597c8c9d751f50b75b9962abd75",
+      password: "04f8996da763b7a969b1028ee3007569eaf3a635486ddab211d512c85b9df8fb07e2eabb1e511e1022e1e9300ee5808617b020c183aad87c8f6a8c0a9fdd147f.e68fc2a33c9e47cc3fadb061569d7d91",
       email: "demo@example.com",
       displayName: "Sarah Johnson",
       profileImageUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
