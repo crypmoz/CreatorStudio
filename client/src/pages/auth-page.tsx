@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
@@ -28,11 +28,12 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { user, loginMutation, registerMutation } = useAuth();
 
-  // Redirect if user is already logged in
-  if (user) {
-    setLocation("/");
-    return null;
-  }
+  // Redirect if user is already logged in using useEffect
+  useEffect(() => {
+    if (user) {
+      setLocation("/");
+    }
+  }, [user, setLocation]);
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
