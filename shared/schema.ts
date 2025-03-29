@@ -80,9 +80,22 @@ export const scheduledPosts = pgTable("scheduled_posts", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
   title: text("title").notNull(),
+  description: text("description"),
+  content: text("content"),
+  contentDraftId: integer("content_draft_id").references(() => contentDrafts.id),
+  mediaFileId: integer("media_file_id").references(() => mediaFiles.id),
   thumbnailUrl: text("thumbnail_url"),
   platforms: text("platforms").array(),
   scheduledFor: timestamp("scheduled_for").notNull(),
+  timeZone: text("time_zone").default("UTC"),
+  status: text("status").default("pending"), // pending, published, failed
+  platformSpecificSettings: jsonb("platform_specific_settings").default({}),
+  repeatSchedule: text("repeat_schedule"), // none, daily, weekly, monthly
+  lastPublishedAt: timestamp("last_published_at"),
+  publishResults: jsonb("publish_results").default([]),
+  isOptimalTimeSelected: boolean("is_optimal_time_selected").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Comment model

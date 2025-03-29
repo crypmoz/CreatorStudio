@@ -296,12 +296,9 @@ router.post('/social-login', async (req: Request, res: Response, next: NextFunct
  */
 router.post('/logout', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    if (!req.token) {
-      return res.status(400).json({ error: 'No token provided' });
-    }
-    
+    // For our demo session-based auth implementation, no token is required
     // Logout user
-    const result = await authService.logout(req.token);
+    const result = await authService.logout(req.user?.id);
     
     res.status(200).json({ success: result });
   } catch (error) {

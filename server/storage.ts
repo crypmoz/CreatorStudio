@@ -32,6 +32,9 @@ export interface IStorage {
   getScheduledPost(id: number): Promise<ScheduledPost | undefined>;
   getScheduledPostsByUserId(userId: number): Promise<ScheduledPost[]>;
   createScheduledPost(post: InsertScheduledPost): Promise<ScheduledPost>;
+  updateScheduledPost(id: number, data: Partial<ScheduledPost>): Promise<ScheduledPost | undefined>;
+  deleteScheduledPost(id: number): Promise<boolean>;
+  getScheduledPostsDueForPublishing(beforeDate: Date): Promise<ScheduledPost[]>;
   
   // Comment operations
   getComment(id: number): Promise<Comment | undefined>;
@@ -137,8 +140,7 @@ export class MemStorage implements IStorage {
     // Ensure null values for optional fields
     const user: User = { 
       ...insertUser, 
-      id,
-      avatar: insertUser.avatar || null 
+      id
     };
     this.users.set(id, user);
     return user;
@@ -228,10 +230,46 @@ export class MemStorage implements IStorage {
       ...post, 
       id,
       thumbnailUrl: post.thumbnailUrl || null,
-      platforms: post.platforms || null
+      platforms: post.platforms || null,
+      description: post.description || null,
+      content: post.content || null,
+      contentDraftId: post.contentDraftId || null,
+      mediaFileId: post.mediaFileId || null,
+      timeZone: post.timeZone || 'UTC',
+      status: post.status || 'pending',
+      platformSpecificSettings: post.platformSpecificSettings || {},
+      repeatSchedule: post.repeatSchedule || null,
+      lastPublishedAt: post.lastPublishedAt || null,
+      publishResults: post.publishResults || [],
+      isOptimalTimeSelected: post.isOptimalTimeSelected || false,
+      createdAt: post.createdAt || new Date(),
+      updatedAt: post.updatedAt || new Date()
     };
     this.scheduledPosts.set(id, newPost);
     return newPost;
+  }
+  
+  async updateScheduledPost(id: number, data: Partial<ScheduledPost>): Promise<ScheduledPost | undefined> {
+    const post = this.scheduledPosts.get(id);
+    if (!post) return undefined;
+    
+    const updatedPost = { ...post, ...data, updatedAt: new Date() };
+    this.scheduledPosts.set(id, updatedPost);
+    return updatedPost;
+  }
+  
+  async deleteScheduledPost(id: number): Promise<boolean> {
+    if (!this.scheduledPosts.has(id)) return false;
+    return this.scheduledPosts.delete(id);
+  }
+  
+  async getScheduledPostsDueForPublishing(beforeDate: Date): Promise<ScheduledPost[]> {
+    return Array.from(this.scheduledPosts.values()).filter(
+      (post) => 
+        post.status === 'pending' &&
+        post.scheduledFor !== null &&
+        post.scheduledFor <= beforeDate
+    );
   }
   
   // Comment operations
@@ -469,9 +507,43 @@ export class MemStorage implements IStorage {
       id: this.currentUserId++,
       username: "demo",
       password: "password",
+      email: "demo@example.com",
       displayName: "Sarah Johnson",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-      handle: "@creativesarah"
+      profileImageUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
+      bio: "Content creator sharing tips and tricks for TikTok growth",
+      tiktokHandle: "@creativesarah",
+      country: "USA",
+      dateOfBirth: null,
+      phoneNumber: null,
+      emailVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastLoginAt: new Date(),
+      role: "creator",
+      provider: "email",
+      providerId: null,
+      twoFactorEnabled: false,
+      twoFactorSecret: null,
+      preferences: {
+        notifications: true,
+        theme: "system",
+        language: "en"
+      },
+      socialProfiles: {
+        instagram: "@sarahjcreates",
+        youtube: "SarahJCreates",
+        twitter: "@sarahjcreates",
+        facebook: "sarahjcreates",
+        tiktok: "@creativesarah"
+      },
+      contentCreatorInfo: {
+        niche: ["lifestyle", "tech", "education"],
+        brandDeals: true,
+        monetized: true,
+        avgViews: 50000,
+        avgEngagement: 0.085,
+        contentFrequency: "daily"
+      }
     };
     this.users.set(user.id, user);
     
@@ -504,18 +576,44 @@ export class MemStorage implements IStorage {
       id: this.currentPostId++,
       userId: user.id,
       title: "Summer Morning Routine",
+      description: "A breakdown of my productive morning routine for summer",
+      content: "This is the content for the first scheduled post",
+      contentDraftId: null,
+      mediaFileId: null,
       thumbnailUrl: "https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?ixlib=rb-1.2.1&auto=format&fit=crop&w=80&h=80&q=80",
       platforms: ["tiktok"],
-      scheduledFor: new Date("2023-06-08T10:00:00")
+      scheduledFor: new Date("2025-06-08T10:00:00"),
+      timeZone: "UTC",
+      status: "pending",
+      platformSpecificSettings: {},
+      repeatSchedule: null,
+      lastPublishedAt: null,
+      publishResults: [],
+      isOptimalTimeSelected: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
     
     const scheduledPost2: ScheduledPost = {
       id: this.currentPostId++,
       userId: user.id,
       title: "5 Tips for Better Videos",
+      description: "Quick tips to improve your TikTok videos",
+      content: "This is the content for the second scheduled post",
+      contentDraftId: null,
+      mediaFileId: null,
       thumbnailUrl: "https://images.unsplash.com/photo-1611162616475-46b635cb6868?ixlib=rb-1.2.1&auto=format&fit=crop&w=80&h=80&q=80",
       platforms: ["tiktok", "instagram"],
-      scheduledFor: new Date("2023-06-08T16:30:00")
+      scheduledFor: new Date("2025-06-08T16:30:00"),
+      timeZone: "UTC",
+      status: "pending",
+      platformSpecificSettings: {},
+      repeatSchedule: null,
+      lastPublishedAt: null,
+      publishResults: [],
+      isOptimalTimeSelected: false,
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
     
     this.scheduledPosts.set(scheduledPost1.id, scheduledPost1);
@@ -634,8 +732,13 @@ export class MemStorage implements IStorage {
       userId: user.id,
       title: "Morning Routine Step-by-Step",
       description: "A detailed breakdown of a productive morning routine with tips for optimal energy.",
+      hashtags: "#morning #routine #productivity",
       niche: "Productivity",
       prompt: "Create a morning routine video with step-by-step instructions",
+      keyPoints: "Wake early, hydrate, exercise, journal, breakfast",
+      estimatedEngagement: 4.8,
+      platform: "tiktok",
+      status: "ready",
       aiGenerated: true,
       createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
       favorite: true,
@@ -647,8 +750,13 @@ export class MemStorage implements IStorage {
       userId: user.id,
       title: "5 Hidden TikTok Features",
       description: "Showcase lesser-known TikTok features that can help creators stand out.",
+      hashtags: "#tiktok #tips #features",
       niche: "Social Media",
       prompt: "What are some hidden TikTok features most people don't know about?",
+      keyPoints: "Analytics, sound mixing, caption tricks, scheduling, trending topics",
+      estimatedEngagement: 5.2,
+      platform: "tiktok",
+      status: "draft",
       aiGenerated: true,
       createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
       favorite: false,
@@ -665,6 +773,12 @@ export class MemStorage implements IStorage {
       ideaId: contentIdea1.id,
       title: "My Productive Morning Routine 2025",
       content: "# Morning Routine Script\n\n## Intro\nHey everyone! Today I'm showing you my morning routine that changed my productivity forever.\n\n## Segment 1: Wake Up (5:30 AM)\n*Show alarm ringing and getting out of bed*\nVoiceover: \"The key is to get up immediately when the alarm goes off!\"\n\n## Segment 2: Hydration\n*Show drinking water from bedside table*\nVoiceover: \"First thing - hydrate! Your body is dehydrated after 8 hours of sleep.\"\n\n## Segment 3: Stretching\n*Quick montage of simple stretches*\n\n## Segment 4: Meditation (10 mins)\n*Sitting peacefully in meditation spot*\n\n## Segment 5: Journaling\n*Writing in journal*\nVoiceover: \"I write three things I'm grateful for every morning.\"\n\n## Segment 6: Breakfast\n*Preparing healthy breakfast*\n\n## Conclusion\nVoiceover: \"This routine has transformed my energy levels and productivity! Try it for a week and see the difference.\"",
+      platform: "tiktok",
+      hook: "Want to 10x your productivity? My morning routine changed EVERYTHING.",
+      structure: "Intro > Wake up > Hydrate > Stretch > Meditate > Journal > Breakfast > Conclusion",
+      audioSuggestions: "Upbeat morning music, calm meditation background",
+      visualEffects: "Sunrise transitions, text overlays for key points",
+      callToAction: "Try this routine for a week and comment your results below!",
       status: "in-progress",
       createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
       updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
@@ -676,6 +790,12 @@ export class MemStorage implements IStorage {
       ideaId: contentIdea2.id,
       title: "5 TikTok Features You're Not Using (But Should Be!)",
       content: "# Hidden TikTok Features Script\n\n## Intro\n\"You're missing out on these 5 powerful TikTok features! Let me show you how to use them...\"\n\n## Feature 1: Advanced Analytics\n*Show screen recording of navigating to hidden analytics page*\nVoiceover: \"Did you know you can see exactly when your followers are most active? Here's how...\"\n\n## Feature 2: Content Calendar\n*Screen recording of calendar feature*\n\n## Feature 3: Sound Mixing\n*Demonstrate advanced audio editing*\n\n## Feature 4: Keyword Research Tool\n*Show how to find trending keywords*\n\n## Feature 5: Caption Formatting Tricks\n*Demonstrate little-known formatting options*\n\n## Conclusion\n\"Which of these features will you try first? Let me know in the comments!\"",
+      platform: "tiktok",
+      hook: "99% of TikTokers don't know these 5 game-changing features!",
+      structure: "Hook > Feature 1 > Feature 2 > Feature 3 > Feature 4 > Feature 5 > CTA",
+      audioSuggestions: "Trending sound with \"mind blown\" effect at each reveal",
+      visualEffects: "Screen recording overlays, zoom effects, finger pointing animations",
+      callToAction: "Comment which feature you'll try first! Follow for more TikTok tips.",
       status: "draft",
       createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
       updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)

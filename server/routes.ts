@@ -16,6 +16,7 @@ import {
 } from "@shared/schema";
 import authRoutes from "./routes/auth.routes";
 import aiRoutes from "./routes/ai.routes";
+import schedulerRoutes from "./routes/scheduler.routes";
 import { setupAuth } from "./auth";
 import express from "express";
 
@@ -27,6 +28,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(express.json());
   app.use('/api/auth', authRoutes);
   app.use('/api/ai', aiRoutes);
+  app.use('/api/scheduler', schedulerRoutes);
   
   // User routes
   app.get('/api/users/:id', async (req, res) => {
