@@ -1,21 +1,45 @@
-import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Loader2 } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { useLocation, useRoute } from 'wouter';
+import { useAuth } from '@/hooks/use-auth';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { useToast } from '@/hooks/use-toast';
 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Eye, EyeOff, AtSign, Lock, UserPlus, LogIn } from 'lucide-react';
+
+// Form schema for login
 const loginSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
+// Form schema for registration
 const registerSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Please enter a valid email address"),
@@ -23,69 +47,122 @@ const registerSchema = z.object({
   displayName: z.string().min(2, "Display name must be at least 2 characters"),
 });
 
-export default function AuthPage() {
-  const [tab, setTab] = useState<"login" | "register">("login");
-  const [, setLocation] = useLocation();
-  const { user, loginMutation, registerMutation } = useAuth();
+type LoginFormValues = z.infer<typeof loginSchema>;
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
-  // Redirect if user is already logged in using useEffect
+const AuthPage = () => {
+  const [activeTab, setActiveTab] = useState<string>('login');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const { user, loginMutation, registerMutation, isLoading } = useAuth();
+  const [location, setLocation] = useLocation();
+  const { toast } = useToast();
+  
+  // Redirect to dashboard if already logged in
   useEffect(() => {
     if (user) {
-      setLocation("/");
+      setLocation('/');
     }
   }, [user, setLocation]);
-
-  const loginForm = useForm<z.infer<typeof loginSchema>>({
+  
+  // Login form setup
+  const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      username: "",
-      password: "",
+      username: '',
+      password: '',
     },
   });
-
-  const registerForm = useForm<z.infer<typeof registerSchema>>({
+  
+  // Register form setup
+  const registerForm = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      username: "",
-      email: "",
-      password: "",
-      displayName: "",
+      username: '',
+      email: '',
+      password: '',
+      displayName: '',
     },
   });
+  
+  // Handle login submission
+  const onLoginSubmit = (data: LoginFormValues) => {
+    loginMutation.mutate(data, {
+      onError: (error) => {
+        toast({
+          title: 'Login failed',
+          description: error.message || 'Invalid username or password',
+          variant: 'destructive',
+        });
+      }
+    });
+  };
+  
+  // Handle registration submission
+  const onRegisterSubmit = (data: RegisterFormValues) => {
+    // Add role to the registration data
+    const registrationData = {
+      ...data,
+      role: 'creator', // Default role for new users
+      bio: null,
+      profileImageUrl: null
+    };
+    
+    registerMutation.mutate(registrationData, {
+      onError: (error) => {
+        toast({
+          title: 'Registration failed',
+          description: error.message || 'Could not create account',
+          variant: 'destructive',
+        });
+      }
+    });
+  };
+  
+  const toggleShowPassword = () => setShowPassword(!showPassword);
 
-  function onLoginSubmit(values: z.infer<typeof loginSchema>) {
-    loginMutation.mutate(values);
-  }
-
-  function onRegisterSubmit(values: z.infer<typeof registerSchema>) {
-    registerMutation.mutate(values);
-  }
-
+  // Return to the previous page or dashboard
+  const handleDemoLogin = () => {
+    loginMutation.mutate({ username: 'demo', password: 'demo123' });
+  };
+  
   return (
-    <div className="flex min-h-screen">
-      {/* Form panel */}
-      <div className="flex flex-col justify-center items-center w-full md:w-1/2 p-6 bg-background">
-        <div className="w-full max-w-md space-y-6">
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold">CreatorAIDE</h1>
-            <p className="text-muted-foreground">Your AI-powered TikTok creator platform</p>
+    <div className="flex min-h-screen bg-gradient-to-r from-gray-900 to-gray-800">
+      {/* Background graphic element */}
+      <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.02] pointer-events-none" />
+      
+      {/* Left column: Auth forms */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8">
+        <div className="w-full max-w-md">
+          <div className="mb-8 text-center">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-500 via-red-500 to-cyan-400 bg-clip-text text-transparent">
+              CreatorAIDE
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Your AI-powered TikTok content optimization platform
+            </p>
           </div>
-
-          <Tabs value={tab} onValueChange={(t) => setTab(t as "login" | "register")} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="login" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Welcome back</CardTitle>
-                  <CardDescription>Login to your CreatorAIDE account</CardDescription>
-                </CardHeader>
-                <Form {...loginForm}>
-                  <form onSubmit={loginForm.handleSubmit(onLoginSubmit)}>
-                    <CardContent className="space-y-4">
+          
+          <Card className="border border-gray-700 bg-gray-800/50 backdrop-blur">
+            <CardHeader>
+              <CardTitle className="text-2xl text-center">
+                {activeTab === 'login' ? 'Sign In' : 'Create Account'}
+              </CardTitle>
+              <CardDescription className="text-center">
+                {activeTab === 'login' 
+                  ? 'Enter your credentials to access your account' 
+                  : 'Fill out the form below to create your CreatorAIDE account'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid grid-cols-2 mb-6">
+                  <TabsTrigger value="login">Login</TabsTrigger>
+                  <TabsTrigger value="register">Register</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="login">
+                  <Form {...loginForm}>
+                    <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
                       <FormField
                         control={loginForm.control}
                         name="username"
@@ -93,12 +170,20 @@ export default function AuthPage() {
                           <FormItem>
                             <FormLabel>Username</FormLabel>
                             <FormControl>
-                              <Input placeholder="Enter your username" {...field} />
+                              <div className="relative">
+                                <AtSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                  placeholder="Enter your username" 
+                                  className="pl-10"
+                                  {...field} 
+                                />
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
+                      
                       <FormField
                         control={loginForm.control}
                         name="password"
@@ -106,43 +191,73 @@ export default function AuthPage() {
                           <FormItem>
                             <FormLabel>Password</FormLabel>
                             <FormControl>
-                              <Input type="password" placeholder="Enter your password" {...field} />
+                              <div className="relative">
+                                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                  type={showPassword ? "text" : "password"} 
+                                  placeholder="Enter your password" 
+                                  className="pl-10"
+                                  {...field} 
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute right-1 top-1"
+                                  onClick={toggleShowPassword}
+                                >
+                                  {showPassword ? (
+                                    <EyeOff className="h-4 w-4" />
+                                  ) : (
+                                    <Eye className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                    </CardContent>
-                    <CardFooter>
+                      
                       <Button 
                         type="submit" 
-                        className="w-full" 
+                        className="w-full mt-2"
                         disabled={loginMutation.isPending}
                       >
                         {loginMutation.isPending ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Logging in...
-                          </>
+                          <span className="flex items-center">
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Signing in...
+                          </span>
                         ) : (
-                          "Login"
+                          <>
+                            <LogIn className="mr-2 h-4 w-4" />
+                            Sign In
+                          </>
                         )}
                       </Button>
-                    </CardFooter>
-                  </form>
-                </Form>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="register" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Create an account</CardTitle>
-                  <CardDescription>Join CreatorAIDE to elevate your TikTok content</CardDescription>
-                </CardHeader>
-                <Form {...registerForm}>
-                  <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)}>
-                    <CardContent className="space-y-4">
+                    </form>
+                  </Form>
+                  
+                  <div className="mt-6">
+                    <Separator className="my-4" />
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={handleDemoLogin}
+                      disabled={loginMutation.isPending}
+                    >
+                      Try Demo Account
+                    </Button>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="register">
+                  <Form {...registerForm}>
+                    <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
                       <FormField
                         control={registerForm.control}
                         name="username"
@@ -150,25 +265,20 @@ export default function AuthPage() {
                           <FormItem>
                             <FormLabel>Username</FormLabel>
                             <FormControl>
-                              <Input placeholder="Choose a username" {...field} />
+                              <div className="relative">
+                                <AtSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                  placeholder="Pick a unique username" 
+                                  className="pl-10"
+                                  {...field} 
+                                />
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                      <FormField
-                        control={registerForm.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl>
-                              <Input type="email" placeholder="Enter your email" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      
                       <FormField
                         control={registerForm.control}
                         name="displayName"
@@ -176,12 +286,34 @@ export default function AuthPage() {
                           <FormItem>
                             <FormLabel>Display Name</FormLabel>
                             <FormControl>
-                              <Input placeholder="Enter your display name" {...field} />
+                              <Input 
+                                placeholder="How you'll appear to others" 
+                                {...field} 
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
+                      
+                      <FormField
+                        control={registerForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="email"
+                                placeholder="Your email address" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
                       <FormField
                         control={registerForm.control}
                         name="password"
@@ -189,75 +321,104 @@ export default function AuthPage() {
                           <FormItem>
                             <FormLabel>Password</FormLabel>
                             <FormControl>
-                              <Input type="password" placeholder="Create a password" {...field} />
+                              <div className="relative">
+                                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                  type={showPassword ? "text" : "password"} 
+                                  placeholder="Create a secure password" 
+                                  className="pl-10"
+                                  {...field} 
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute right-1 top-1"
+                                  onClick={toggleShowPassword}
+                                >
+                                  {showPassword ? (
+                                    <EyeOff className="h-4 w-4" />
+                                  ) : (
+                                    <Eye className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                    </CardContent>
-                    <CardFooter>
+                      
                       <Button 
                         type="submit" 
-                        className="w-full" 
+                        className="w-full mt-2"
                         disabled={registerMutation.isPending}
                       >
                         {registerMutation.isPending ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Creating account...
-                          </>
+                          <span className="flex items-center">
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Creating Account...
+                          </span>
                         ) : (
-                          "Register"
+                          <>
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Create Account
+                          </>
                         )}
                       </Button>
-                    </CardFooter>
-                  </form>
-                </Form>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                    </form>
+                  </Form>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-2 text-center text-sm text-muted-foreground">
+              <p>By proceeding, you agree to our Terms of Service and Privacy Policy.</p>
+            </CardFooter>
+          </Card>
         </div>
       </div>
-
-      {/* Hero panel */}
-      <div className="hidden md:flex md:w-1/2 bg-gradient-to-b from-primary/20 to-primary/5 flex-col justify-center items-center p-12">
-        <div className="max-w-md space-y-6">
+      
+      {/* Right column: Hero section */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-pink-500/20 via-red-500/20 to-cyan-400/20 flex-col justify-center items-center p-8">
+        <div className="max-w-lg space-y-8">
           <div className="space-y-4">
-            <h2 className="text-4xl font-bold">Elevate your TikTok content with AI</h2>
-            <p className="text-lg">
-              CreatorAIDE helps you create more engaging content, plan your schedule, and understand your audience like never before.
+            <h2 className="text-4xl font-bold bg-gradient-to-r from-pink-500 via-red-500 to-cyan-400 bg-clip-text text-transparent">Optimize Your TikTok Content</h2>
+            <p className="text-xl text-gray-300">
+              CreatorAIDE is your all-in-one platform for TikTok creators looking to grow their audience and optimize their content strategy.
             </p>
           </div>
           
           <div className="space-y-4">
             <div className="flex items-start space-x-3">
-              <div className="mt-0.5 bg-primary/10 p-2 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              <div className="h-8 w-8 rounded-full bg-pink-500/20 flex items-center justify-center shrink-0">
+                <span className="text-pink-400">✓</span>
               </div>
               <div>
-                <h3 className="font-semibold">Content that trends</h3>
-                <p className="text-muted-foreground">Get AI-powered insights to create content that resonates with your audience.</p>
+                <h3 className="font-medium text-gray-200">AI-Powered Analytics</h3>
+                <p className="text-gray-400">Get detailed insights and predictions to help you understand what works for your audience.</p>
               </div>
             </div>
             
             <div className="flex items-start space-x-3">
-              <div className="mt-0.5 bg-primary/10 p-2 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+              <div className="h-8 w-8 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+                <span className="text-red-400">✓</span>
               </div>
               <div>
-                <h3 className="font-semibold">Creative assistance</h3>
-                <p className="text-muted-foreground">Writer's block? Let our AI help generate fresh content ideas tailored to your style.</p>
+                <h3 className="font-medium text-gray-200">Content Creation Tools</h3>
+                <p className="text-gray-400">Generate ideas, drafts, and optimize your content with AI assistance.</p>
               </div>
             </div>
             
             <div className="flex items-start space-x-3">
-              <div className="mt-0.5 bg-primary/10 p-2 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+              <div className="h-8 w-8 rounded-full bg-cyan-500/20 flex items-center justify-center shrink-0">
+                <span className="text-cyan-400">✓</span>
               </div>
               <div>
-                <h3 className="font-semibold">Smart scheduling</h3>
-                <p className="text-muted-foreground">Post at optimal times across platforms to maximize engagement and reach.</p>
+                <h3 className="font-medium text-gray-200">Virality Predictions</h3>
+                <p className="text-gray-400">Our algorithm analyzes your content to predict performance and suggest improvements.</p>
               </div>
             </div>
           </div>
@@ -265,4 +426,6 @@ export default function AuthPage() {
       </div>
     </div>
   );
-}
+};
+
+export default AuthPage;

@@ -6,6 +6,8 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { OnboardingProvider } from "@/hooks/use-onboarding";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { OnboardingTooltip } from "@/components/onboarding/OnboardingTooltip";
+import ErrorBoundary from "@/components/error/ErrorBoundary";
+import { SEOHead } from "@/components/seo/SEOHead";
 
 // Pages
 import NotFound from "@/pages/not-found";
@@ -73,17 +75,20 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <OnboardingProvider>
-          <MainLayout>
-            <Router />
-          </MainLayout>
-          <OnboardingTooltip />
-          <Toaster />
-        </OnboardingProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <SEOHead />
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <OnboardingProvider>
+            <MainLayout>
+              <Router />
+            </MainLayout>
+            <OnboardingTooltip />
+            <Toaster />
+          </OnboardingProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
