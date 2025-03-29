@@ -16,6 +16,7 @@ export const SUPABASE_KEY = process.env.SUPABASE_KEY || '';
 
 // API keys and external services
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+export const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
 export const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY || '';
 export const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET || '';
 
@@ -39,6 +40,7 @@ export const config = {
   },
   api: {
     openai: OPENAI_API_KEY,
+    deepseek: DEEPSEEK_API_KEY,
     tiktok: {
       clientKey: TIKTOK_CLIENT_KEY,
       clientSecret: TIKTOK_CLIENT_SECRET

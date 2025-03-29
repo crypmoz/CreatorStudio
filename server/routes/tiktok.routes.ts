@@ -235,4 +235,47 @@ router.get('/validate-api', isAuthenticated, async (req, res) => {
   }
 });
 
+/**
+ * @route GET /api/tiktok/test-api
+ * @desc Test endpoint for TikTok API keys validation (no auth required)
+ * @access Public
+ */
+router.get('/test-api', async (req, res) => {
+  try {
+    const isAvailable = !!(TIKTOK_CLIENT_KEY && TIKTOK_CLIENT_SECRET);
+    
+    if (isAvailable) {
+      try {
+        // This is a simple test to see if TikTok API keys are properly formatted
+        // Note: We can't fully validate the keys without user authorization
+        const authUrl = tiktokService.getAuthUrl('test_state_token');
+        
+        res.json({
+          available: true,
+          valid: true, 
+          message: 'TikTok API keys are configured and appear to be valid',
+          authUrl: authUrl // Include the auth URL just to show it's working
+        });
+      } catch (apiError: any) {
+        console.error('Error testing TikTok API:', apiError);
+        res.json({
+          available: true,
+          valid: false,
+          message: 'TikTok API keys are configured but may not be valid',
+          error: apiError.message
+        });
+      }
+    } else {
+      res.json({ 
+        available: false,
+        valid: false,
+        message: 'TikTok API keys are not configured'
+      });
+    }
+  } catch (error) {
+    console.error('Error testing TikTok API:', error);
+    res.status(500).json({ message: 'Failed to test TikTok API availability' });
+  }
+});
+
 export default router;

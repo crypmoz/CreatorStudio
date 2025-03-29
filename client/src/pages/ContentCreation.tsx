@@ -53,6 +53,7 @@ import { z } from 'zod';
 import { Star, StarOff, Copy, PlusCircle, Sparkles, PenLine, Check, Trash2, Clock, Upload, Video, Image as ImageIcon, FileText as FileIcon, X } from 'lucide-react';
 import { MediaUploader } from '@/components/MediaUploader';
 import { VideoProcessor } from '@/components/VideoProcessor';
+import { ContentTemplateManager } from '@/components/ContentTemplateManager';
 
 // Form schema for idea generation
 const generateIdeasSchema = z.object({
@@ -985,127 +986,24 @@ const ContentCreation = () => {
         </TabsContent>
 
         <TabsContent value="templates">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="col-span-full">
-              <CardHeader>
-                <CardTitle>Content Templates</CardTitle>
-                <CardDescription>
-                  Pre-built templates for different TikTok content formats
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Before/After Transformation</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Perfect for showing impressive results or changes over time. Great for fitness, learning, makeover or home improvement content.
-                      </p>
-                      <Button variant="outline" className="w-full">Use Template</Button>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Step-by-Step Tutorial</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Break down complicated processes into simple, easy-to-follow steps. Ideal for DIY, cooking, or educational content.
-                      </p>
-                      <Button variant="outline" className="w-full">Use Template</Button>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Trending Sound Reaction</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Jump on viral sounds with your own creative twist. Helps boost reach through algorithmic recommendations.
-                      </p>
-                      <Button variant="outline" className="w-full">Use Template</Button>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Unpopular Opinion</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Share a controversial but thoughtful take on a topic in your niche. Generate engagement through discussion and debate.
-                      </p>
-                      <Button variant="outline" className="w-full">Use Template</Button>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Day in the Life</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Document your daily routine as a professional in your field. Great for behind-the-scenes content that builds authenticity.
-                      </p>
-                      <Button variant="outline" className="w-full">Use Template</Button>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Expectation vs. Reality</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Contrast common expectations with the actual reality of a situation. Humorous and relatable format with high engagement.
-                      </p>
-                      <Button variant="outline" className="w-full">Use Template</Button>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Top 5 List</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Curate and count down the best products, tips, or ideas in your niche. Creates anticipation and encourages watching to the end.
-                      </p>
-                      <Button variant="outline" className="w-full">Use Template</Button>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Duet Challenge</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Create content that invites others to duet with you. Great for audience participation and extending your reach organically.
-                      </p>
-                      <Button variant="outline" className="w-full">Use Template</Button>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">POV (Point of View)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Create an immersive scenario where viewers feel like they're experiencing the content firsthand. Excellent for storytelling.
-                      </p>
-                      <Button variant="outline" className="w-full">Use Template</Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <Card className="border-none shadow-none">
+            <CardHeader className="px-0">
+              <CardTitle>Content Templates</CardTitle>
+              <CardDescription>
+                Pre-built templates for different TikTok content formats. Use these to jumpstart your content creation.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-0">
+              <ContentTemplateManager onSelectTemplate={(template) => {
+                toast({
+                  title: "Template Selected",
+                  description: `You've selected the ${template.title} template`,
+                });
+                // Here you could update the form or state with the template details
+                // Or navigate to a specific content creation workflow
+              }} />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

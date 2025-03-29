@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { OPENAI_API_KEY, TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET } from '../config/env';
+import { OPENAI_API_KEY, DEEPSEEK_API_KEY, TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET } from '../config/env';
 
 /**
  * Middleware to check if required API keys are set
@@ -10,6 +10,20 @@ export function requireOpenAI(req: Request, res: Response, next: NextFunction) {
     return res.status(503).json({
       message: 'OpenAI API is not configured',
       error: 'OPENAI_API_KEY environment variable is not set',
+      code: 'API_NOT_CONFIGURED'
+    });
+  }
+  next();
+}
+
+/**
+ * Middleware to check if DeepSeek API key is configured
+ */
+export function requireDeepSeek(req: Request, res: Response, next: NextFunction) {
+  if (!DEEPSEEK_API_KEY) {
+    return res.status(503).json({
+      message: 'DeepSeek API is not configured',
+      error: 'DEEPSEEK_API_KEY environment variable is not set',
       code: 'API_NOT_CONFIGURED'
     });
   }
@@ -42,6 +56,9 @@ export function validateExternalApis(apiNames: string[]) {
       switch (api.toLowerCase()) {
         case 'openai':
           if (!OPENAI_API_KEY) missingApis.push('OpenAI');
+          break;
+        case 'deepseek':
+          if (!DEEPSEEK_API_KEY) missingApis.push('DeepSeek');
           break;
         case 'tiktok':
           if (!TIKTOK_CLIENT_KEY || !TIKTOK_CLIENT_SECRET) missingApis.push('TikTok');

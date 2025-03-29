@@ -6,6 +6,7 @@ import { storage } from '../storage';
 import { z } from 'zod';
 import { fromZodError } from 'zod-validation-error';
 import { OPENAI_API_KEY } from '../config/env';
+import { OpenAI } from 'openai';
 
 const router = Router();
 
@@ -219,6 +220,65 @@ router.get('/validate-openai', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Error checking OpenAI API:', error);
     res.status(500).json({ error: 'Failed to check OpenAI API availability' });
+  }
+});
+
+/**
+ * @route GET /api/ai/test-openai
+ * @desc Test endpoint for OpenAI API key validation (no auth required)
+ * @access Public
+ */
+router.get('/test-openai', async (req, res) => {
+  try {
+    const isAvailable = !!OPENAI_API_KEY;
+    
+    if (isAvailable) {
+      try {
+        // Make a simple request to OpenAI API to verify the key works
+        const openai = new OpenAI({
+          apiKey: OPENAI_API_KEY,
+        });
+        
+        const response = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: "You are a helpful assistant for TikTok creators."
+            },
+            {
+              role: "user",
+              content: "Confirm that this API connection is working correctly."
+            }
+          ],
+          max_tokens: 50
+        });
+        
+        res.json({
+          available: true,
+          valid: true,
+          message: 'OpenAI API key is configured and working',
+          response: response.choices[0].message.content
+        });
+      } catch (apiError: any) {
+        console.error('Error testing actual OpenAI API:', apiError);
+        res.json({
+          available: true,
+          valid: false,
+          message: 'OpenAI API key is configured but not working',
+          error: apiError.message
+        });
+      }
+    } else {
+      res.json({ 
+        available: false,
+        valid: false,
+        message: 'OpenAI API key is not configured'
+      });
+    }
+  } catch (error) {
+    console.error('Error testing OpenAI API:', error);
+    res.status(500).json({ error: 'Failed to test OpenAI API availability' });
   }
 });
 

@@ -1,16 +1,26 @@
-import { config, OPENAI_API_KEY } from '../config/env';
+import { config, OPENAI_API_KEY, DEEPSEEK_API_KEY } from '../config/env';
 import { ContentIdea, ContentDraft } from '@shared/schema';
 
 /**
- * Service for AI operations using OpenAI API
+ * Service for AI operations using DeepSeek API
  */
 export class AIService {
   private apiKey: string;
   private baseUrl: string;
+  private useDeepSeek: boolean;
 
   constructor() {
-    this.apiKey = config.api.openai || OPENAI_API_KEY;
-    this.baseUrl = 'https://api.openai.com/v1';
+    // Prioritize DeepSeek API if available, fallback to OpenAI if not
+    if (config.api.deepseek || DEEPSEEK_API_KEY) {
+      this.apiKey = config.api.deepseek || DEEPSEEK_API_KEY;
+      this.baseUrl = 'https://api.deepseek.com/v1';
+      this.useDeepSeek = true;
+    } else {
+      this.apiKey = config.api.openai || OPENAI_API_KEY;
+      this.baseUrl = 'https://api.openai.com/v1';
+      this.useDeepSeek = false;
+      console.warn('DeepSeek API key not found, falling back to OpenAI');
+    }
   }
 
   /**
@@ -58,7 +68,7 @@ export class AIService {
           parsedResponse = JSON.parse(response);
         }
       } catch (e) {
-        console.error('Failed to parse OpenAI API response as JSON:', e);
+        console.error(`Failed to parse ${this.useDeepSeek ? 'DeepSeek' : 'OpenAI'} API response as JSON:`, e);
         // Create a structured response from unstructured text as fallback
         parsedResponse = this.extractIdeasFromText(response, count);
       }
@@ -72,9 +82,9 @@ export class AIService {
         estimatedEngagement: idea.estimatedEngagement,
         status: 'draft',
       }));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating content ideas:', error);
-      throw new Error('Failed to generate content ideas');
+      throw new Error(`Failed to generate content ideas: ${error.message}`);
     }
   }
 
@@ -123,7 +133,7 @@ export class AIService {
           parsedResponse = JSON.parse(response);
         }
       } catch (e) {
-        console.error('Failed to parse OpenAI API response as JSON:', e);
+        console.error(`Failed to parse ${this.useDeepSeek ? 'DeepSeek' : 'OpenAI'} API response as JSON:`, e);
         // Create a structured response from unstructured text as fallback
         parsedResponse = this.extractDraftFromText(response);
       }
@@ -140,9 +150,9 @@ export class AIService {
         callToAction: parsedResponse.callToAction,
         status: 'draft',
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating content draft:', error);
-      throw new Error('Failed to generate content draft');
+      throw new Error(`Failed to generate content draft: ${error.message}`);
     }
   }
 
@@ -183,7 +193,7 @@ export class AIService {
           parsedResponse = JSON.parse(response);
         }
       } catch (e) {
-        console.error('Failed to parse OpenAI API response as JSON:', e);
+        console.error(`Failed to parse ${this.useDeepSeek ? 'DeepSeek' : 'OpenAI'} API response as JSON:`, e);
         // Extract prompts from text as fallback
         parsedResponse = response
           .split(/\\d+\\./)
@@ -192,9 +202,9 @@ export class AIService {
       }
 
       return parsedResponse;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating image prompts:', error);
-      throw new Error('Failed to generate image prompts');
+      throw new Error(`Failed to generate image prompts: ${error.message}`);
     }
   }
 
@@ -254,7 +264,7 @@ export class AIService {
           parsedResponse = JSON.parse(response);
         }
       } catch (e) {
-        console.error('Failed to parse OpenAI API response as JSON:', e);
+        console.error(`Failed to parse ${this.useDeepSeek ? 'DeepSeek' : 'OpenAI'} API response as JSON:`, e);
         // Create a structured analysis from unstructured text
         parsedResponse = {
           viralityScore: 50,
@@ -266,18 +276,76 @@ export class AIService {
       }
 
       return parsedResponse;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error analyzing video virality:', error);
-      throw new Error('Failed to analyze video virality');
+      throw new Error(`Failed to analyze video virality: ${error.message}`);
     }
   }
 
   /**
-   * Private method to call the OpenAI API
+   * Private method to call the AI API (DeepSeek or OpenAI)
    * @param prompt The prompt to send to the API
    * @returns The API response text
    */
   private async callOpenAIAPI(prompt: string): Promise<string> {
+    try {
+      if (this.useDeepSeek) {
+        return await this.callDeepSeekAPI(prompt);
+      } else {
+        return await this.callActualOpenAIAPI(prompt);
+      }
+    } catch (error: any) {
+      console.error(`Error calling ${this.useDeepSeek ? 'DeepSeek' : 'OpenAI'} API:`, error);
+      throw new Error(`Failed to get response from ${this.useDeepSeek ? 'DeepSeek' : 'OpenAI'} API: ${error.message}`);
+    }
+  }
+
+  /**
+   * Call the DeepSeek API
+   * @param prompt The prompt to send to the API
+   * @returns The API response text
+   */
+  private async callDeepSeekAPI(prompt: string): Promise<string> {
+    try {
+      // Call DeepSeek API
+      const response = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 2000,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`DeepSeek API error: ${response.status} ${error}`);
+      }
+
+      const data = await response.json();
+      return data.choices[0].message.content;
+    } catch (error: any) {
+      console.error('Error calling DeepSeek API:', error);
+      throw new Error(`DeepSeek API error: ${error.message}`);
+    }
+  }
+
+  /**
+   * Call the OpenAI API
+   * @param prompt The prompt to send to the API
+   * @returns The API response text
+   */
+  private async callActualOpenAIAPI(prompt: string): Promise<string> {
     try {
       // Call OpenAI API
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -306,19 +374,9 @@ export class AIService {
 
       const data = await response.json();
       return data.choices[0].message.content;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error calling OpenAI API:', error);
-      
-      // If API fails, return simulated response for testing
-      console.log('Returning simulated response for testing');
-      
-      return JSON.stringify({
-        "title": "Sample Title",
-        "description": "This is a sample description",
-        "keyPoints": ["Point 1", "Point 2", "Point 3"],
-        "hashtags": ["#sample", "#test", "#demo"],
-        "estimatedEngagement": 7
-      });
+      throw new Error(`OpenAI API error: ${error.message}`);
     }
   }
 

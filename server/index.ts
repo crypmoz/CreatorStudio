@@ -9,6 +9,9 @@ import { injectStorage } from "./middleware/auth.middleware";
 
 const app = express();
 
+// Trust proxies (needed for rate limiting behind proxies)
+app.set('trust proxy', 1);
+
 // Apply security middleware for production
 if (IS_PRODUCTION) {
   // Enable Helmet security headers
